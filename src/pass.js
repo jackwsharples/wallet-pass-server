@@ -70,15 +70,19 @@ export async function createPassBuffer({
     passTypeIdentifier,
     teamIdentifier,
     serialNumber,
-    backgroundColor: 'rgb(0,122,255)',
+    // These colors can be overridden by pass-model.pass/pass.json
+    backgroundColor: 'rgb(34,139,94)',
     foregroundColor: 'rgb(255,255,255)',
-    labelColor: 'rgb(255,255,255)',
+    labelColor: 'rgb(255,210,77)',
     generic: {
-      primaryFields: [
-        { key: 'name', label: 'Member', value: holderName }
+      primaryFields: [],
+      secondaryFields: [],
+      auxiliaryFields: [
+        { key: 'name', label: 'Name', value: holderName },
+        { key: 'id', label: 'ID', value: serialNumber }
       ],
-      secondaryFields: [
-        { key: 'id', label: 'Serial', value: serialNumber }
+      backFields: [
+        { key: 'about', label: 'How to use', value: 'Show this pass at checkout. Add to Apple Wallet for faster access. Contact support if you need help replacing a pass.' }
       ]
     }
   };
@@ -128,8 +132,39 @@ export async function createPassBuffer({
 
 async function resolveModelDir() {
   const staticDir = path.join(process.cwd(), 'pass-model.pass');
-  if (fs.existsSync(staticDir)) return staticDir;
+  if (fs.existsSync(staticDir)) {
+    await ensureModelAssets(staticDir);
+    return staticDir;
+  }
   return await buildInMemoryModel();
+}
+
+async function ensureModelAssets(dir) {
+  const ensure = async (name) => {
+    const p = path.join(dir, name);
+    if (!fs.existsSync(p)) await fsp.writeFile(p, getImageBuffer(name));
+  };
+  await ensure('icon.png');
+  await ensure('icon@2x.png');
+
+  const icon1x = path.join(dir, 'icon.png');
+  const icon2x = path.join(dir, 'icon@2x.png');
+  const logo1x = path.join(dir, 'logo.png');
+  const logo2x = path.join(dir, 'logo@2x.png');
+
+  // If a logo is not supplied, copy icon so your branding still appears at the top
+  if (!fs.existsSync(logo1x) && fs.existsSync(icon1x)) {
+    await fsp.copyFile(icon1x, logo1x);
+  } else if (!fs.existsSync(logo1x)) {
+    await ensure('logo.png');
+  }
+  if (!fs.existsSync(logo2x)) {
+    if (fs.existsSync(icon2x)) {
+      await fsp.copyFile(icon2x, logo2x);
+    } else {
+      await ensure('logo@2x.png');
+    }
+  }
 }
 
 async function buildInMemoryModel() {
