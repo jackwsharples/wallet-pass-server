@@ -23,22 +23,42 @@
     <div class="wrap">
       <div class="card">
         <h1>Create Apple Wallet Pass</h1>
-        <p>Enter a name and tap the button to generate a Wallet pass on-device.</p>
+        <p>Demo flow: generate a one-time code (simulates payment), then redeem it to download a pass personalized with a name.</p>
+
+        <label for="demo-email">Email (optional for demo)</label>
+        <input id="demo-email" placeholder="you@example.com" />
+        <button id="demo-buy">Demo Checkout (Get Code)</button>
+        <div id="code-box" class="hint" style="margin-top:10px"></div>
+
+        <hr style="margin:18px 0; border:0; border-top:1px solid #1f2a44"/>
+
         <label for="name">Name on pass</label>
         <input id="name" placeholder="Jane Appleseed" />
-        <button id="btn">Add to Apple Wallet</button>
+        <label for="redeem-code">Enter your code</label>
+        <input id="redeem-code" placeholder="ABC234" />
+        <button id="redeem-btn">Redeem & Download</button>
         <div class="hint">On iPhone, this downloads a .pkpass and opens Wallet.</div>
-        <div class="footer">Server generates passes with your Apple certificates. No data is stored.</div>
+        <div class="footer">This is a demo without Stripe. Codes are single‑use.</div>
       </div>
     </div>
     <script>
       const $ = (s)=>document.querySelector(s);
-      $('#btn').addEventListener('click', ()=>{
-        const name = encodeURIComponent($('#name').value || 'Guest');
-        const url = `/api/pass?name=${name}`;
-        window.location.href = url;
+      $('#demo-buy').addEventListener('click', async ()=>{
+        const email = $('#demo-email').value.trim();
+        const r = await fetch('/api/demo/checkout', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email: email || undefined })});
+        const data = await r.json();
+        if (!r.ok) { $('#code-box').textContent = data.error || 'Failed to create code'; return; }
+        $('#code-box').textContent = `Your code: ${data.code}`;
+        $('#redeem-code').value = data.code;
+      });
+      $('#redeem-btn').addEventListener('click', async ()=>{
+        const code = $('#redeem-code').value.trim();
+        const name = $('#name').value.trim() || 'Guest';
+        const r = await fetch('/api/redeem', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ code, name })});
+        const data = await r.json();
+        if (!r.ok) { alert(data.error || 'Redeem failed'); return; }
+        window.location.href = '/api/pass/download?token='+encodeURIComponent(data.token);
       });
     </script>
   </body>
   </html>
-

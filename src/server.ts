@@ -80,6 +80,37 @@ app.post('/api/create-checkout-session', async (req: Request, res: Response, nex
   }
 });
 
+// Demo checkout: create a single-use code without Stripe
+app.post('/api/demo/checkout', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const email = typeof req.body?.email === 'string' ? req.body.email : undefined;
+    const metadata = typeof req.body?.metadata === 'object' && req.body?.metadata ? req.body.metadata : undefined;
+    // Try generating a unique code; loop a few times in the rare case of collision
+    let code = '';
+    for (let i = 0; i < 5; i++) {
+      code = makeCode(6);
+      try {
+        await prisma.confirmationCode.create({
+          data: {
+            code,
+            status: 'UNUSED',
+            customerEmail: email || null,
+            stripeSessionId: `demo:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
+            metadata: metadata ? metadata : undefined
+          }
+        });
+        break; // success
+      } catch (e: any) {
+        if (e?.code !== 'P2002') throw e; // not a unique violation
+      }
+    }
+    if (!code) return res.status(500).json({ error: 'Failed to create demo code' });
+    res.json({ code });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Stripe webhook: raw body
 app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (req: Request, res: Response) => {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -178,7 +209,7 @@ const redeemLimiter = rateLimit({
 // Redeem API
 app.post('/api/redeem', redeemLimiter, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { code, email } = req.body || {};
+    const { code, email, name } = req.body || {};
     if (!code || typeof code !== 'string') return res.status(400).json({ error: 'Missing code' });
     const cleaned = sanitizeCode(code);
     const row = await prisma.confirmationCode.findUnique({ where: { code: cleaned } });
@@ -196,7 +227,8 @@ app.post('/api/redeem', redeemLimiter, async (req: Request, res: Response, next:
         data: { status: 'USED', usedAt: new Date(), redeemAuditIp: ip, redeemAuditUa: ua }
       })
     ]);
-    const token = createDownloadToken(60);
+    const safeName = typeof name === 'string' ? name.trim().slice(0, 64) : undefined;
+    const token = createDownloadToken(60, safeName);
     res.json({ token });
   } catch (err) {
     next(err);
@@ -232,9 +264,10 @@ app.get('/api/pass/download', async (req, res) => {
     const description = process.env.PASS_DESCRIPTION || 'Web-generated pass';
     const passTypeIdentifier = process.env.PASS_TYPE_IDENTIFIER || '';
     const teamIdentifier = process.env.TEAM_IDENTIFIER || '';
+    const holderFromToken = (verifyDownloadToken(token) as any).name as string | undefined;
     const buffer = await createPassBuffer({
       serialNumber: serial,
-      holderName: 'Buyer',
+      holderName: holderFromToken || 'Buyer',
       organizationName: orgName,
       description,
       passTypeIdentifier,
