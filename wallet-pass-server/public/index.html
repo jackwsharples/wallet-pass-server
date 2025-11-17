@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Add to Apple Wallet</title>
+    <style>
+      :root { --accent:#007aff; --bg:#0f172a; --fg:#e5e7eb; }
+      html,body { height:100%; margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:#0b1020; color:var(--fg); }
+      .wrap { display:grid; place-items:center; height:100%; padding:24px; }
+      .card { width:min(520px, 92vw); background:#0f172a; border:1px solid #1f2a44; border-radius:16px; padding:24px; box-shadow: 0 10px 30px rgba(0,0,0,.4)}
+      h1 { margin:0 0 8px; font-size:24px }
+      p { opacity:.8 }
+      label { display:block; margin:16px 0 6px; font-weight:600 }
+      input { width:100%; padding:12px 14px; border-radius:10px; border:1px solid #334155; background:#111827; color:#e5e7eb }
+      button { margin-top:16px; background:var(--accent); color:white; border:0; padding:12px 16px; border-radius:10px; font-weight:700; cursor:pointer }
+      .hint { font-size:12px; opacity:.7; margin-top:6px }
+      .footer { margin-top:20px; font-size:12px; opacity:.6 }
+      a { color:#9dd6ff }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card">
+        <h1>Create Apple Wallet Pass</h1>
+        <p>Demo flow: generate a one-time code (simulates payment), then redeem it to download a pass personalized with a name.</p>
+
+        <label for="demo-email">Email (optional for demo)</label>
+        <input id="demo-email" placeholder="you@example.com" />
+        <button id="demo-buy">Demo Checkout (Get Code)</button>
+        <div id="code-box" class="hint" style="margin-top:10px"></div>
+
+        <hr style="margin:18px 0; border:0; border-top:1px solid #1f2a44"/>
+
+        <label for="name">Name on pass</label>
+        <input id="name" placeholder="Jane Appleseed" />
+        <label for="redeem-code">Enter your code</label>
+        <input id="redeem-code" placeholder="ABC234" />
+        <button id="redeem-btn">Redeem & Download</button>
+        <div class="hint">On iPhone, this downloads a .pkpass and opens Wallet.</div>
+        <div class="footer">This is a demo without Stripe. Codes are single‑use.</div>
+      </div>
+    </div>
+    <script>
+      const $ = (s)=>document.querySelector(s);
+      $('#demo-buy').addEventListener('click', async ()=>{
+        const email = $('#demo-email').value.trim();
+        const r = await fetch('/api/demo/checkout', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email: email || undefined })});
+        const data = await r.json();
+        if (!r.ok) { $('#code-box').textContent = data.error || 'Failed to create code'; return; }
+        $('#code-box').textContent = `Your code: ${data.code}`;
+        $('#redeem-code').value = data.code;
+      });
+      $('#redeem-btn').addEventListener('click', async ()=>{
+        const code = $('#redeem-code').value.trim();
+        const name = $('#name').value.trim() || 'Guest';
+        const r = await fetch('/api/redeem', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ code, name })});
+        const data = await r.json();
+        if (!r.ok) { alert(data.error || 'Redeem failed'); return; }
+        window.location.href = '/api/pass/download?token='+encodeURIComponent(data.token);
+      });
+    </script>
+  </body>
+  </html>

@@ -1,0 +1,109 @@
+<!-- Copy this entire block into a WordPress HTML block/page. -->
+<div id="discount-card-widget">
+  <div id="purchase-success" style="display:none; padding:12px; border:1px solid #d1e7dd; background:#f0fff4; margin-bottom:12px;">
+    <strong>Thanks for your purchase!</strong>
+    <div id="user-code" style="margin-top:6px; font-size:18px;"></div>
+    <div style="font-size:12px;">Save this code; it works once.</div>
+  </div>
+
+  <form id="redeem-form" style="display:grid; gap:8px; max-width:360px;">
+    <label>Enter your discount code
+      <input id="redeem-code" required placeholder="ABC123XYZ" style="width:100%; padding:10px;">
+    </label>
+    <button type="submit" style="padding:10px; background:#2563eb; color:white; border:0; cursor:pointer; border-radius:6px;">Download Wallet Pass</button>
+    <div id="redeem-status" style="font-size:12px; color:#444;"></div>
+  </form>
+</div>
+
+<script>
+(() => {
+  const API_BASE = 'https://your-railway-app.up.railway.app'; // <-- set to your Railway backend origin (https)
+  const successBox = document.getElementById('purchase-success');
+  const userCode = document.getElementById('user-code');
+  const redeemForm = document.getElementById('redeem-form');
+  const redeemCodeInput = document.getElementById('redeem-code');
+  const redeemStatus = document.getElementById('redeem-status');
+
+  function randomCode(length = 12) {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const bytes = crypto.getRandomValues(new Uint8Array(length));
+    return Array.from(bytes, (b) => chars[b % chars.length]).join('');
+  }
+
+  async function postJSON(url, payload) {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      mode: 'cors',
+      credentials: 'omit',
+      body: JSON.stringify(payload)
+    });
+    return res;
+  }
+
+  async function handleCheckoutSuccess() {
+    const params = new URLSearchParams(location.search);
+    const sessionId = params.get('session_id');
+    const email = params.get('customer_email') || ''; // include if you add it to success URL
+    if (!sessionId) return; // only run on Stripe success page
+
+    const code = randomCode(12);
+    try {
+      const res = await postJSON(`${API_BASE}/api/store-code`, { code, stripeSessionId: sessionId, email });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Could not store code');
+      }
+      successBox.style.display = 'block';
+      userCode.textContent = code;
+      redeemCodeInput.value = code;
+    } catch (err) {
+      console.error(err);
+      successBox.style.display = 'block';
+      userCode.textContent = 'We could not finalize your code. Contact support.';
+    }
+  }
+
+  redeemForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    redeemStatus.textContent = 'Validating code...';
+    redeemStatus.style.color = '#444';
+    const code = redeemCodeInput.value.trim();
+
+    try {
+      const res = await fetch(`${API_BASE}/api/redeem-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        mode: 'cors',
+        credentials: 'omit',
+        body: JSON.stringify({ code })
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        redeemStatus.textContent = err.error || 'Invalid or used code.';
+        redeemStatus.style.color = '#b91c1c';
+        return;
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'discount_card.pkpass';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      redeemStatus.textContent = 'Download started.';
+      redeemStatus.style.color = '#15803d';
+    } catch (err) {
+      console.error(err);
+      redeemStatus.textContent = 'Something went wrong. Please try again.';
+      redeemStatus.style.color = '#b91c1c';
+    }
+  });
+
+  handleCheckoutSuccess();
+})();
+</script>
