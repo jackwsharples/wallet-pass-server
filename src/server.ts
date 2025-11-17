@@ -11,6 +11,7 @@ import rateLimit from 'express-rate-limit';
 import { makeCode, sanitizeCode } from './lib/code.js';
 import { createDownloadToken, verifyDownloadToken } from './lib/token.js';
 import { sendConfirmationEmail } from './lib/email.js';
+import { registerDiscountRoutes } from './discount-routes.js';
 // Lazy-load pass utilities so it works in both ts-node and dist builds
 async function getPassLib() {
   const maybeDist = path.join(__dirname, 'pass.js');
@@ -40,6 +41,9 @@ app.use((req, res, next) => {
   if (req.path === '/webhooks/stripe') return next();
   return express.json()(req, res, next);
 });
+
+// Discount card endpoints (in-memory store for Railway demo)
+registerDiscountRoutes(app);
 
 // Helpers
 function clientIp(req: Request): string {
