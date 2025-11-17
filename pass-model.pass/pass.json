@@ -4,16 +4,17 @@
   "teamIdentifier": "REPLACED_AT_RUNTIME",
   "organizationName": "REPLACED_AT_RUNTIME",
   "description": "REPLACED_AT_RUNTIME",
-  "backgroundColor": "rgb(34,139,94)",
-  "foregroundColor": "rgb(255,255,255)",
-  "labelColor": "rgb(255,210,77)",
+  "backgroundColor": "rgb(255,255,255)",
+  "foregroundColor": "rgb(0,0,0)",
+  "labelColor": "rgb(0,0,0)",
   "logoText": "Discount Card",
-  "generic": {
-    "primaryFields": [],
-    "secondaryFields": [],
-    "auxiliaryFields": [
-      { "key": "name", "label": "Name", "value": "" },
-      { "key": "id", "label": "ID", "value": "" }
+  "storeCard": {
+    "primaryFields": [
+      { "key": "cardholder", "label": "CARDHOLDER", "value": "John Smith", "textAlignment": "PKTextAlignmentCenter" }
+    ],
+    "secondaryFields": [
+      { "key": "expires", "label": "EXPIRES", "value": "12/31/2026", "textAlignment": "PKTextAlignmentCenter" },
+      { "key": "region", "label": "REGION", "value": "Boone, NC", "textAlignment": "PKTextAlignmentCenter" }
     ],
     "backFields": [
       { "key": "about", "label": "How to use", "value": "Show this pass at checkout. Add to Apple Wallet for faster access. Contact support if you need help replacing a pass." }
