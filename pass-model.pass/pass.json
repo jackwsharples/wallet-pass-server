@@ -5,8 +5,8 @@
   "organizationName": "REPLACED_AT_RUNTIME",
   "description": "REPLACED_AT_RUNTIME",
   "backgroundColor": "rgb(255,255,255)",
-  "foregroundColor": "rgb(0,0,0)",
-  "labelColor": "rgb(0,0,0)",
+  "foregroundColor": "rgb(36,99,75)", 
+  "labelColor": "rgb(36,99,75)",
   "logoText": " ",
   "storeCard": {
     "primaryFields": [],
