@@ -7,12 +7,12 @@
   "backgroundColor": "rgb(255,255,255)",
   "foregroundColor": "rgb(0,0,0)",
   "labelColor": "rgb(0,0,0)",
-  "logoText": "Discount Card",
+  "logoText": "",
   "storeCard": {
-    "primaryFields": [
-      { "key": "cardholder", "label": "CARDHOLDER", "value": "John Smith", "textAlignment": "PKTextAlignmentCenter" }
-    ],
-    "secondaryFields": [
+    "primaryFields": [],
+    "secondaryFields": [],
+    "auxiliaryFields": [
+      { "key": "cardholder", "label": "CARDHOLDER", "value": "John Smith", "textAlignment": "PKTextAlignmentCenter" },
       { "key": "expires", "label": "EXPIRES", "value": "12/31/2026", "textAlignment": "PKTextAlignmentCenter" },
       { "key": "region", "label": "REGION", "value": "Boone, NC", "textAlignment": "PKTextAlignmentCenter" }
     ],
