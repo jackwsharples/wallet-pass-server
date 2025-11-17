@@ -1,0 +1,105 @@
+<!-- Success page snippet: paste into the WordPress page set as Stripe success_url.
+     Requires success_url to include ?session_id={CHECKOUT_SESSION_ID}.
+     Set API_BASE below. This version generates a code client-side and stores it with the session_id. -->
+<div id="discount-success">
+  <div id="success-alert" style="display:none; padding:12px; border:1px solid #d1e7dd; background:#f0fff4; margin-bottom:12px;">
+    <strong>Purchase confirmed.</strong>
+    <div id="code-display" style="margin-top:6px; font-size:18px;"></div>
+    <div style="font-size:12px;">Save this code; it works once.</div>
+  </div>
+  <div id="error-alert" style="display:none; padding:12px; border:1px solid #fca5a5; background:#fff1f2; margin-bottom:12px; color:#b91c1c;"></div>
+
+  <form id="redeem-form" style="display:grid; gap:8px; max-width:360px; margin-top:12px;">
+    <label>Enter your discount code
+      <input id="redeem-code" required placeholder="ABC123XYZ" style="width:100%; padding:10px;">
+    </label>
+    <button type="submit" style="padding:10px; background:#2563eb; color:white; border:0; cursor:pointer; border-radius:6px;">Download Wallet Pass</button>
+    <div id="redeem-status" style="font-size:12px; color:#444;"></div>
+  </form>
+</div>
+
+<script>
+(() => {
+  const API_BASE = 'https://wallet-pass-server-production.up.railway.app'; // <-- set to Railway backend origin
+  const successBox = document.getElementById('success-alert');
+  const errorBox = document.getElementById('error-alert');
+  const codeDisplay = document.getElementById('code-display');
+  const redeemForm = document.getElementById('redeem-form');
+  const redeemCodeInput = document.getElementById('redeem-code');
+  const redeemStatus = document.getElementById('redeem-status');
+
+  async function init() {
+    const params = new URLSearchParams(location.search);
+    const sessionId = params.get('session_id');
+    if (!sessionId) {
+      errorBox.style.display = 'block';
+      errorBox.textContent = 'Missing session_id. Open this page from the Stripe success redirect.';
+      return;
+    }
+
+    // Ask backend to generate/return the single code for this session_id
+    try {
+      const res = await fetch(`${API_BASE}/api/store-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        mode: 'cors',
+        body: JSON.stringify({ stripeSessionId: sessionId })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Could not store code');
+      }
+      const data = await res.json();
+      const code = data.code;
+      successBox.style.display = 'block';
+      codeDisplay.textContent = code;
+      redeemCodeInput.value = code;
+    } catch (err) {
+      console.error(err);
+      errorBox.style.display = 'block';
+      errorBox.textContent = 'We could not finalize your code. Please contact support.';
+    }
+  }
+
+  redeemForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    redeemStatus.textContent = 'Validating code...';
+    redeemStatus.style.color = '#444';
+    const code = redeemCodeInput.value.trim();
+
+    try {
+      const res = await fetch(`${API_BASE}/api/redeem-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        mode: 'cors',
+        body: JSON.stringify({ code })
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        redeemStatus.textContent = err.error || 'Invalid or used code.';
+        redeemStatus.style.color = '#b91c1c';
+        return;
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'discount_card.pkpass';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      redeemStatus.textContent = 'Download started.';
+      redeemStatus.style.color = '#15803d';
+    } catch (err) {
+      console.error(err);
+      redeemStatus.textContent = 'Something went wrong. Please try again.';
+      redeemStatus.style.color = '#b91c1c';
+    }
+  });
+
+  init();
+})();
+</script>

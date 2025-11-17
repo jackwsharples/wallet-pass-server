@@ -1,0 +1,48 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ConfirmationStatus {
+  UNUSED
+  USED
+  VOID
+}
+
+enum DiscountCodeStatus {
+  UNUSED
+  USED
+}
+
+model ConfirmationCode {
+  id               String               @id @default(cuid())
+  code             String               @unique
+  status           ConfirmationStatus   @default(UNUSED)
+  customerEmail    String?
+  stripePaymentId  String?              @unique
+  stripeSessionId  String?              @db.VarChar(255)
+  expiresAt        DateTime?
+  usedAt           DateTime?
+  createdAt        DateTime             @default(now())
+  metadata         Json?
+  redeemAuditIp    String?
+  redeemAuditUa    String?
+
+  @@index([stripeSessionId])
+}
+
+model DiscountCode {
+  id              String              @id @default(cuid())
+  code            String              @unique
+  stripeSessionId String              @unique
+  email           String?
+  status          DiscountCodeStatus  @default(UNUSED)
+  createdAt       DateTime            @default(now())
+  usedAt          DateTime?
+
+  @@index([stripeSessionId])
+}
