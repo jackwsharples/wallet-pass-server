@@ -3,6 +3,7 @@ node_modules/
 /.run/
 /certs/
 *.pkpass
+!assets/discount_card.pkpass
 *.p12
 *.pem
 *.key
