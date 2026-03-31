@@ -11,6 +11,7 @@
     "build": "tsc -p tsconfig.json",
     "prestart": "prisma migrate deploy",
     "start": "node dist/server.js",
+    "test:pass": "node scripts/make-test-pass.js",
     "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate deploy"

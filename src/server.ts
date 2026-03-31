@@ -225,14 +225,25 @@ app.post('/api/redeem', redeemLimiter, async (req: Request, res: Response, next:
     }
     const ip = clientIp(req);
     const ua = userAgent(req);
+    const safeName = typeof name === 'string' ? name.trim().slice(0, 64) : undefined;
+    const existingMeta =
+      row.metadata && typeof row.metadata === 'object' && !Array.isArray(row.metadata)
+        ? (row.metadata as Record<string, any>)
+        : {};
+    const nextMeta = safeName ? { ...existingMeta, redeemName: safeName } : existingMeta;
     await prisma.$transaction([
       prisma.confirmationCode.update({
         where: { id: row.id },
-        data: { status: 'USED', usedAt: new Date(), redeemAuditIp: ip, redeemAuditUa: ua }
+        data: {
+          status: 'USED',
+          usedAt: new Date(),
+          redeemAuditIp: ip,
+          redeemAuditUa: ua,
+          metadata: nextMeta
+        }
       })
     ]);
-    const safeName = typeof name === 'string' ? name.trim().slice(0, 64) : undefined;
-    const token = createDownloadToken(60, safeName);
+    const token = createDownloadToken(60, { codeId: row.id, name: safeName });
     res.json({ token });
   } catch (err) {
     next(err);
@@ -243,40 +254,42 @@ app.post('/api/redeem', redeemLimiter, async (req: Request, res: Response, next:
 app.get('/api/pass/download', async (req, res) => {
   try {
     const token = (req.query.token as string) || '';
-    verifyDownloadToken(token);
+    const payload = verifyDownloadToken(token);
 
-    const assetsDir = path.join(process.cwd(), 'assets');
-    const passPath = path.join(assetsDir, 'current.pkpass');
+    const row = await prisma.confirmationCode.findUnique({ where: { id: payload.codeId } });
+    if (!row) return res.status(404).json({ error: 'Code not found' });
+    if (row.status !== 'USED') return res.status(400).json({ error: 'Code not redeemed' });
+
+    const meta =
+      row.metadata && typeof row.metadata === 'object' && !Array.isArray(row.metadata)
+        ? (row.metadata as Record<string, any>)
+        : {};
+    const holderName =
+      payload.name ||
+      (typeof meta.redeemName === 'string' ? meta.redeemName : undefined) ||
+      row.customerEmail ||
+      'Buyer';
+    const serial = row.stripePaymentId || row.stripeSessionId || row.id;
+
     res.setHeader('Content-Type', 'application/vnd.apple.pkpass');
     res.setHeader('Content-Disposition', 'attachment; filename="discount_card.pkpass"');
 
-    if (fs.existsSync(passPath)) {
-      const stream = fs.createReadStream(passPath);
-      stream.pipe(res);
-      stream.on('error', (e) => {
-        console.error('Stream error', e);
-        res.destroy(e as any);
-      });
-      return;
-    }
-
-    // Fallback: generate on the fly using existing pass generator
+    // Generate on the fly using existing pass generator
     const { ensureCertFilesOnDisk, createPassBuffer } = await getPassLib();
     const certPaths = await ensureCertFilesOnDisk();
-    const serial = Date.now().toString(36);
     const orgName = process.env.ORG_NAME || 'Web Pass Org';
     const description = process.env.PASS_DESCRIPTION || 'Web-generated pass';
     const passTypeIdentifier = process.env.PASS_TYPE_IDENTIFIER || '';
     const teamIdentifier = process.env.TEAM_IDENTIFIER || '';
-    const holderFromToken = (verifyDownloadToken(token) as any).name as string | undefined;
     const buffer = await createPassBuffer({
       serialNumber: serial,
-      holderName: holderFromToken || 'Buyer',
+      holderName,
       organizationName: orgName,
       description,
       passTypeIdentifier,
       teamIdentifier,
-      certPaths
+      certPaths,
+      barcode: { message: row.code, format: 'PKBarcodeFormatQR' }
     });
     res.end(buffer);
   } catch (err: any) {
