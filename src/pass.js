@@ -59,7 +59,7 @@ export async function createPassBuffer({
   passTypeIdentifier,
   teamIdentifier,
   certPaths,
-  barcode
+  barcode = undefined
 }) {
   const keyPassphrase = process.env.PASS_KEY_PASSPHRASE || undefined;
   const safeName = typeof holderName === 'string' ? holderName.trim() : '';
