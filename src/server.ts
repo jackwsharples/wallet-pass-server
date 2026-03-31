@@ -269,8 +269,11 @@ app.get('/api/pass/download', async (req, res) => {
       (typeof meta.redeemName === 'string' ? meta.redeemName : undefined) ||
       row.customerEmail ||
       'Buyer';
-    const serial = row.stripePaymentId || row.stripeSessionId || row.id;
+    const serial = row.code;
 
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.setHeader('Content-Type', 'application/vnd.apple.pkpass');
     res.setHeader('Content-Disposition', 'attachment; filename="discount_card.pkpass"');
 
@@ -288,8 +291,7 @@ app.get('/api/pass/download', async (req, res) => {
       description,
       passTypeIdentifier,
       teamIdentifier,
-      certPaths,
-      barcode: { message: row.code, format: 'PKBarcodeFormatQR' }
+      certPaths
     });
     res.end(buffer);
   } catch (err: any) {

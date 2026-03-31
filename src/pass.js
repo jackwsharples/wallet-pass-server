@@ -62,40 +62,43 @@ export async function createPassBuffer({
   barcode
 }) {
   const keyPassphrase = process.env.PASS_KEY_PASSPHRASE || undefined;
+  const safeName = typeof holderName === 'string' ? holderName.trim() : '';
+  const displayName = safeName ? safeName : 'Valued Member';
 
-  // Minimal generic pass config
+  // Store card layout with modern discount styling
   const fields = {
     description,
     organizationName,
     passTypeIdentifier,
     teamIdentifier,
     serialNumber,
-    // These colors can be overridden by pass-model.pass/pass.json
-    backgroundColor: 'rgb(34,139,94)',
-    foregroundColor: 'rgb(255,255,255)',
-    labelColor: 'rgb(255,210,77)',
-    generic: {
-      primaryFields: [],
-      secondaryFields: [],
-      auxiliaryFields: [
-        { key: 'name', label: 'Name', value: holderName },
-        { key: 'id', label: 'ID', value: serialNumber }
+    backgroundColor: 'rgb(79, 138, 102)',
+    foregroundColor: 'rgb(255, 255, 255)',
+    labelColor: 'rgb(240, 230, 140)',
+    logoText: 'BOONE',
+    storeCard: {
+      primaryFields: [
+        { key: 'title', label: '', value: 'DISCOUNT CARD' }
       ],
-      backFields: [
-        { key: 'about', label: 'How to use', value: 'Show this pass at checkout. Add to Apple Wallet for faster access. Contact support if you need help replacing a pass.' }
-      ]
+      secondaryFields: [
+        { key: 'cardholder', label: 'CARDHOLDER', value: displayName },
+        { key: 'expires', label: 'EXPIRES', value: '12/31/2026' },
+        { key: 'region', label: 'REGION', value: 'Boone, NC' }
+      ],
+      auxiliaryFields: [],
+      backFields: []
     }
   };
 
-  if (barcode && barcode.message) {
-    fields.barcodes = [
-      {
-        format: barcode.format || 'PKBarcodeFormatQR',
-        message: barcode.message,
-        messageEncoding: 'iso-8859-1'
-      }
-    ];
-  }
+  const qrMessage = 'https://localdiscountcard.net/?page_id=22';
+  fields.barcodes = [
+    {
+      format: 'PKBarcodeFormatQR',
+      message: qrMessage,
+      messageEncoding: 'iso-8859-1',
+      altText: 'Scan at participating locations'
+    }
+  ];
 
   const modelDir = await resolveModelDir();
   const pass = await PKPass.from(

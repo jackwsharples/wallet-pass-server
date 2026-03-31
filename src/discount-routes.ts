@@ -1,8 +1,7 @@
 import express from 'express';
-import path from 'node:path';
-import fs from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { getPrisma } from './lib/prisma.js';
+import { ensureCertFilesOnDisk, createPassBuffer } from './pass.js';
 
 type CodeRow = {
   id: number;
@@ -29,14 +28,6 @@ function generateCode(length = 12) {
     out += chars[bytes[i] % chars.length];
   }
   return out;
-}
-
-function resolvePassPath() {
-  const primary = path.join(process.cwd(), 'assets', 'discount_card.pkpass');
-  const fallback = path.join(process.cwd(), 'assets', 'current.pkpass');
-  if (fs.existsSync(primary)) return primary;
-  if (fs.existsSync(fallback)) return fallback;
-  return primary; // default path even if missing; handler will error later
 }
 
 export function registerDiscountRoutes(app: express.Express) {
@@ -117,15 +108,27 @@ export function registerDiscountRoutes(app: express.Express) {
       data: { status: 'USED', usedAt: new Date() }
     });
 
-    const sendPath = resolvePassPath();
-    if (!fs.existsSync(sendPath)) {
-      return res.status(500).json({ error: 'Pass file missing on server' });
-    }
-
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.setHeader('Content-Type', 'application/vnd.apple.pkpass');
     res.setHeader('Content-Disposition', 'attachment; filename=\"discount_card.pkpass\"');
-    return res.sendFile(sendPath, (err) => {
-      if (err) console.error('pkpass send error', err);
+
+    const certPaths = await ensureCertFilesOnDisk();
+    const orgName = process.env.ORG_NAME || 'Web Pass Org';
+    const description = process.env.PASS_DESCRIPTION || 'Web-generated pass';
+    const passTypeIdentifier = process.env.PASS_TYPE_IDENTIFIER || '';
+    const teamIdentifier = process.env.TEAM_IDENTIFIER || '';
+    const holderName = row.email || 'Valued Member';
+    const buffer = await createPassBuffer({
+      serialNumber: row.code,
+      holderName,
+      organizationName: orgName,
+      description,
+      passTypeIdentifier,
+      teamIdentifier,
+      certPaths
     });
+    return res.end(buffer);
   });
 }
