@@ -8,13 +8,11 @@ const RUNTIME_CERT_DIR = path.join(process.cwd(), '.run', 'certs');
 function envB64(name) {
   const v = process.env[name];
   if (!v) return undefined;
-  // Trim common accidental prefixes like data:...;base64,
   const parts = v.split('base64,');
   return Buffer.from(parts.pop(), 'base64');
 }
 
 export async function ensureCertFilesOnDisk() {
-  // Prefer explicit file paths if provided
   const certPathEnv = process.env.PASS_CERT_PATH;
   const keyPathEnv = process.env.PASS_KEY_PATH;
   const wwdrPathEnv = process.env.WWDR_CERT_PATH;
@@ -24,7 +22,6 @@ export async function ensureCertFilesOnDisk() {
     return { signerCert: certPathEnv, signerKey: keyPathEnv, wwdr: wwdrPathEnv };
   }
 
-  // Otherwise, write base64 envs to runtime files for Railway
   await fsp.mkdir(RUNTIME_CERT_DIR, { recursive: true });
   const certB64 = envB64('PASS_CERT_BASE64');
   const keyB64 = envB64('PASS_KEY_BASE64');
@@ -46,7 +43,7 @@ export async function ensureCertFilesOnDisk() {
 }
 
 function getImageBuffer(name) {
-  // 1x1 png transparent as fallback; iOS accepts it though it won’t look pretty
+  // 1x1 png transparent as fallback
   const base = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Yf8a3sAAAAASUVORK5CYII=';
   return Buffer.from(base, 'base64');
 }
@@ -66,17 +63,20 @@ export async function createPassBuffer({
   
   // Safe Fallbacks
   const safeName = typeof holderName === 'string' && holderName.trim() ? holderName.trim() : 'Valued Member';
-  const safeRegion = typeof userRegion === 'string' && userRegion.trim() ? userRegion.trim() : 'Boone, NC';
   const qrUrl = (barcode && barcode.message) || process.env.PASS_QR_URL;
   const safeMessage = qrUrl || 'https://localdiscountcard.net/?page_id=22';
 
-  // CACHE BUSTING: Append a timestamp to the serial so Apple Wallet ALWAYS sees a new pass
+  // Splitting the name for the layout
+  const nameParts = safeName.split(' ');
+  const firstName = nameParts[0] || 'Valued';
+  const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : 'Member';
+
+  // CACHE BUSTING
   const baseSerial = serialNumber || 'TEST-000000';
   const safeSerial = `${baseSerial}-${Date.now()}`;
 
   const modelDir = await resolveModelDir();
   
-  // 1. Only pass top-level strings into the constructor
   const pass = await PKPass.from(
     {
       model: modelDir,
@@ -93,24 +93,24 @@ export async function createPassBuffer({
       passTypeIdentifier,
       teamIdentifier,
       serialNumber: safeSerial,
-      backgroundColor: 'rgb(79, 138, 102)',
+      // Updated to match your exact template colors
+      backgroundColor: 'rgb(48, 112, 87)',
       foregroundColor: 'rgb(255, 255, 255)',
-      labelColor: 'rgb(240, 230, 140)',
-      logoText: 'BOONE'
+      labelColor: 'rgb(255, 255, 255)',
+      logoText: '' // Left blank so your new image handles the branding
     }
   );
 
-  // 2. Bypass the deep-merge bug by assigning fields directly to the pass instance
   pass.type = 'storeCard';
 
-  pass.primaryFields = [
-    { key: 'title', label: 'DEAL', value: 'DISCOUNT CARD' }
-  ];
+  // Empty primary fields let the mountain strip image take over the center
+  pass.primaryFields = [];
 
+  // Aligned to match your 3-column template
   pass.secondaryFields = [
-    { key: 'cardholder', label: 'CARDHOLDER', value: safeName },
-    { key: 'expires', label: 'EXPIRES', value: '12/31/2026' },
-    { key: 'region', label: 'REGION', value: safeRegion }
+    { key: 'firstName', label: 'FIRST NAME', value: firstName },
+    { key: 'lastName', label: 'LAST NAME', value: lastName },
+    { key: 'tier', label: 'TIER', value: 'Member' }
   ];
 
   pass.barcodes = [
@@ -122,13 +122,8 @@ export async function createPassBuffer({
     }
   ];
 
-  // 3. Output Buffer
-  if (typeof pass.getAsBuffer === 'function') {
-    return await pass.getAsBuffer();
-  }
-  if (typeof pass.asBuffer === 'function') {
-    return await pass.asBuffer();
-  }
+  if (typeof pass.getAsBuffer === 'function') return await pass.getAsBuffer();
+  if (typeof pass.asBuffer === 'function') return await pass.asBuffer();
   if (typeof pass.getAsStream === 'function') {
     const stream = await pass.getAsStream();
     const chunks = [];
@@ -156,15 +151,19 @@ async function ensureModelAssets(dir) {
     const p = path.join(dir, name);
     if (!fs.existsSync(p)) await fsp.writeFile(p, getImageBuffer(name));
   };
+  
   await ensure('icon.png');
   await ensure('icon@2x.png');
+  
+  // Adding the strip image to the bundle
+  await ensure('strip.png');
+  await ensure('strip@2x.png');
 
   const icon1x = path.join(dir, 'icon.png');
   const icon2x = path.join(dir, 'icon@2x.png');
   const logo1x = path.join(dir, 'logo.png');
   const logo2x = path.join(dir, 'logo@2x.png');
 
-  // If a logo is not supplied, copy icon so your branding still appears at the top
   if (!fs.existsSync(logo1x) && fs.existsSync(icon1x)) {
     await fsp.copyFile(icon1x, logo1x);
   } else if (!fs.existsSync(logo1x)) {
@@ -180,8 +179,6 @@ async function ensureModelAssets(dir) {
 }
 
 async function buildInMemoryModel() {
-  // Create a temporary model folder with minimal required assets
-  // passkit-generator expects a folder ending with .pass
   const dir = path.join(process.cwd(), '.run', 'model.pass');
   await fsp.rm(dir, { recursive: true, force: true });
   await fsp.mkdir(dir, { recursive: true });
@@ -197,13 +194,17 @@ async function buildInMemoryModel() {
   };
   await fsp.writeFile(path.join(dir, 'pass.json'), JSON.stringify(passJson, null, 2));
 
-  // Minimal required images: icon.png (+@2x) and logo.png (+@2x)
   const oneX = getImageBuffer('icon');
   const twoX = getImageBuffer('icon@2x');
+  
   await fsp.writeFile(path.join(dir, 'icon.png'), oneX);
   await fsp.writeFile(path.join(dir, 'icon@2x.png'), twoX);
   await fsp.writeFile(path.join(dir, 'logo.png'), oneX);
   await fsp.writeFile(path.join(dir, 'logo@2x.png'), twoX);
+  
+  // Adding default transparent strip files so the compiler doesn't crash if they are missing
+  await fsp.writeFile(path.join(dir, 'strip.png'), oneX);
+  await fsp.writeFile(path.join(dir, 'strip@2x.png'), twoX);
 
   return dir;
 }
