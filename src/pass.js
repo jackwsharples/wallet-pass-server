@@ -59,11 +59,15 @@ export async function createPassBuffer({
   passTypeIdentifier,
   teamIdentifier,
   certPaths,
-  barcode = undefined
+  barcode = undefined,
+  userRegion = undefined
 }) {
   const keyPassphrase = process.env.PASS_KEY_PASSPHRASE || undefined;
-  const safeName = typeof holderName === 'string' ? holderName.trim() : '';
-  const displayName = safeName ? safeName : 'Valued Member';
+  const safeName = typeof holderName === 'string' && holderName.trim() ? holderName.trim() : 'Valued Member';
+  const safeRegion = typeof userRegion === 'string' && userRegion.trim() ? userRegion.trim() : 'Boone, NC';
+  const safeSerial = serialNumber || 'TEST-000000';
+  const qrUrl = (barcode && barcode.message) || process.env.PASS_QR_URL;
+  const safeMessage = qrUrl || 'https://localdiscountcard.net/?page_id=22';
 
   // Store card layout with modern discount styling
   const fields = {
@@ -71,7 +75,7 @@ export async function createPassBuffer({
     organizationName,
     passTypeIdentifier,
     teamIdentifier,
-    serialNumber,
+    serialNumber: safeSerial,
     backgroundColor: 'rgb(79, 138, 102)',
     foregroundColor: 'rgb(255, 255, 255)',
     labelColor: 'rgb(240, 230, 140)',
@@ -81,22 +85,21 @@ export async function createPassBuffer({
         { key: 'title', label: '', value: 'DISCOUNT CARD' }
       ],
       secondaryFields: [
-        { key: 'cardholder', label: 'CARDHOLDER', value: displayName },
+        { key: 'cardholder', label: 'CARDHOLDER', value: safeName },
         { key: 'expires', label: 'EXPIRES', value: '12/31/2026' },
-        { key: 'region', label: 'REGION', value: 'Boone, NC' }
+        { key: 'region', label: 'REGION', value: safeRegion }
       ],
       auxiliaryFields: [],
       backFields: []
     }
   };
 
-  const qrMessage = 'https://localdiscountcard.net/?page_id=22';
   fields.barcodes = [
     {
       format: 'PKBarcodeFormatQR',
-      message: qrMessage,
+      message: safeMessage,
       messageEncoding: 'iso-8859-1',
-      altText: 'Scan at participating locations'
+      altText: 'Scan to verify'
     }
   ];
 
