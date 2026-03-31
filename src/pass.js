@@ -100,26 +100,23 @@ export async function createPassBuffer({
     }
   );
 
+  // Set the pass type
   pass.type = 'storeCard';
 
-  // Empty primary fields let the mountain strip image take over the center
-  pass.primaryFields = [];
+  // We omit primaryFields entirely to let the mountain strip show
 
-  // Aligned to match your 3-column template
-  pass.secondaryFields = [
-    { key: 'firstName', label: 'FIRST NAME', value: firstName },
-    { key: 'lastName', label: 'LAST NAME', value: lastName },
-    { key: 'tier', label: 'TIER', value: 'Member' }
-  ];
+  // Add the secondary fields one by one using the library's method
+  pass.secondaryFields.add({ key: 'firstName', label: 'FIRST NAME', value: firstName });
+  pass.secondaryFields.add({ key: 'lastName', label: 'LAST NAME', value: lastName });
+  pass.secondaryFields.add({ key: 'tier', label: 'TIER', value: 'Member' });
 
-  pass.barcodes = [
-    {
-      format: 'PKBarcodeFormatQR',
-      message: safeMessage,
-      messageEncoding: 'iso-8859-1',
-      altText: 'Scan to verify'
-    }
-  ];
+  // Add the barcode (Apple expects this as a top-level property, not an array assignment)
+  pass.barcode = {
+    format: 'PKBarcodeFormatQR',
+    message: safeMessage,
+    messageEncoding: 'iso-8859-1',
+    altText: 'Scan to verify'
+  };
 
   if (typeof pass.getAsBuffer === 'function') return await pass.getAsBuffer();
   if (typeof pass.asBuffer === 'function') return await pass.asBuffer();
