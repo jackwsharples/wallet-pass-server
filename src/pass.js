@@ -96,8 +96,7 @@ export async function createPassBuffer({
       // Updated to match your exact template colors
       backgroundColor: 'rgb(48, 112, 87)',
       foregroundColor: 'rgb(255, 255, 255)',
-      labelColor: 'rgb(255, 255, 255)',
-      logoText: '' // Left blank so your new image handles the branding
+      labelColor: 'rgb(255, 255, 255)'// Left blank so your new image handles the branding
     }
   );
 
