@@ -4,20 +4,10 @@
   "teamIdentifier": "REPLACED_AT_RUNTIME",
   "organizationName": "REPLACED_AT_RUNTIME",
   "description": "REPLACED_AT_RUNTIME",
-  "backgroundColor": "rgb(255,255,255)",
-  "foregroundColor": "rgb(36,99,75)", 
-  "labelColor": "rgb(36,99,75)",
-  "logoText": " ",
   "storeCard": {
     "primaryFields": [],
     "secondaryFields": [],
-    "auxiliaryFields": [
-      { "key": "cardholder", "label": "CARDHOLDER", "value": "John Smith", "textAlignment": "PKTextAlignmentCenter" },
-      { "key": "expires", "label": "EXPIRES", "value": "12/31/2026", "textAlignment": "PKTextAlignmentCenter" },
-      { "key": "region", "label": "REGION", "value": "Boone, NC", "textAlignment": "PKTextAlignmentCenter" }
-    ],
-    "backFields": [
-      { "key": "about", "label": "How to use", "value": "Show this pass at checkout. Add to Apple Wallet for faster access. Contact support if you need help replacing a pass." }
-    ]
+    "auxiliaryFields": [],
+    "backFields": []
   }
 }
