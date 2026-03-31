@@ -107,14 +107,6 @@ export async function createPassBuffer({
   pass.secondaryFields.push({ key: 'lastName', label: 'LAST NAME', value: lastName });
   pass.secondaryFields.push({ key: 'tier', label: 'TIER', value: 'Member' });
 
-  pass.barcodes = [
-    {
-      format: 'PKBarcodeFormatQR',
-      message: safeMessage,
-      messageEncoding: 'iso-8859-1',
-      altText: 'Scan to verify'
-    }
-  ];
 
   if (typeof pass.getAsBuffer === 'function') return await pass.getAsBuffer();
   if (typeof pass.asBuffer === 'function') return await pass.asBuffer();
