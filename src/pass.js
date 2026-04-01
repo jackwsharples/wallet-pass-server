@@ -102,21 +102,19 @@ export async function createPassBuffer({
 
   // Set the pass type
   // Set the pass type
-  pass.type = 'storeCard';
+  pass.type = 'storeCard';
 
-  pass.primaryFields = [];
+  pass.secondaryFields.push({ key: 'firstName', label: 'FIRST NAME', value: firstName });
+  pass.secondaryFields.push({ key: 'lastName', label: 'LAST NAME', value: lastName });
+  pass.secondaryFields.push({ key: 'tier', label: 'TIER', value: 'Member' });
 
-  pass.secondaryFields.push({ key: 'firstName', label: 'FIRST NAME', value: firstName });
-  pass.secondaryFields.push({ key: 'lastName', label: 'LAST NAME', value: lastName });
-  pass.secondaryFields.push({ key: 'tier', label: 'TIER', value: 'Member' });
-
-  // ✅ correct way to set QR barcode in v3.5.2
-  pass.setBarcodes({
-    format: 'PKBarcodeFormatQR',
-    message: safeMessage,
-    messageEncoding: 'iso-8859-1',
-    altText: 'Scan to verify'
-  });
+  // ✅ correct way to set QR barcode in v3.5.2
+  pass.setBarcodes({
+    format: 'PKBarcodeFormatQR',
+    message: safeMessage,
+    messageEncoding: 'iso-8859-1',
+    altText: 'Scan to verify'
+  });
 
   if (typeof pass.getAsBuffer === 'function') return await pass.getAsBuffer();
   if (typeof pass.asBuffer === 'function') return await pass.asBuffer();
