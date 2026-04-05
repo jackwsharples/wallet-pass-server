@@ -93,7 +93,7 @@ export function registerDiscountRoutes(app: express.Express) {
   });
 
   app.post('/api/redeem-code', async (req, res) => {
-    const { code } = req.body || {};
+    const { code, firstName, lastName } = req.body || {};
     if (!code || typeof code !== 'string') {
       return res.status(400).json({ error: 'Missing code' });
     }
@@ -119,7 +119,14 @@ export function registerDiscountRoutes(app: express.Express) {
     const description = process.env.PASS_DESCRIPTION || 'Web-generated pass';
     const passTypeIdentifier = process.env.PASS_TYPE_IDENTIFIER || '';
     const teamIdentifier = process.env.TEAM_IDENTIFIER || '';
-    const holderName = row.email || 'Valued Member';
+    const normalizeNamePart = (value: unknown) => {
+      if (typeof value !== 'string') return '';
+      return value.trim().replace(/\s+/g, ' ').slice(0, 40);
+    };
+    const safeFirst = normalizeNamePart(firstName);
+    const safeLast = normalizeNamePart(lastName);
+    const providedName = [safeFirst, safeLast].filter(Boolean).join(' ').trim();
+    const holderName = providedName || row.email || 'Valued Member';
     const buffer = await createPassBuffer({
       serialNumber: row.code,
       holderName,
