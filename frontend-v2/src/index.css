@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+@theme {
+  /* Brand palette */
+  --color-brand-green: #2d6a4f;
+  --color-brand-green-dark: #1b4332;
+  --color-brand-green-light: #40916c;
+  --color-brand-cream: #f5e9c8;
+  --color-brand-cream-light: #fdf6e3;
+  --color-brand-gold: #c9a84c;
+
+  /* Typography */
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-display: 'Oswald', 'Impact', sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-brand-cream-light text-brand-green-dark font-sans;
+    -webkit-font-smoothing: antialiased;
+  }
+}
