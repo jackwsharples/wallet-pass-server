@@ -24,23 +24,22 @@ export default function BusinessCard({ business }) {
 
   return (
     <motion.div
-      whileHover={{ y: -4, boxShadow: '0 12px 32px rgba(0,0,0,0.12)' }}
+      whileHover={{ y: -2 }}
       transition={{ duration: 0.2 }}
-      className="bg-white rounded-2xl p-5 flex flex-col gap-3 shadow-sm border border-gray-100 h-full"
+      className="bg-brand-green-pale rounded-lg p-5 sm:p-6 flex flex-col gap-4 h-full border border-brand-green/10"
     >
-      {/* Logo placeholder */}
-      <div className="w-12 h-12 rounded-xl bg-brand-green-dark flex items-center justify-center flex-shrink-0">
-        <span className="text-brand-gold font-display font-bold text-lg">{initials}</span>
+      <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-md bg-brand-green-dark flex items-center justify-center flex-shrink-0">
+        <span className="text-brand-gold font-display font-bold text-base sm:text-lg">{initials}</span>
       </div>
 
       <div className="flex-1">
-        <h3 className="font-semibold text-brand-green-dark text-base leading-snug mb-1">{business.name}</h3>
-        <p className="text-brand-green font-medium text-sm">{business.discount}</p>
+        <h3 className="font-semibold text-brand-green-dark text-sm sm:text-base leading-snug">{business.name}</h3>
+        <p className="text-brand-green font-medium text-xs sm:text-sm mt-1.5">{business.discount}</p>
       </div>
 
       <span
-        className={`self-start text-xs font-semibold px-2.5 py-1 rounded-full ${
-          categoryColors[business.category] ?? 'bg-gray-100 text-gray-600'
+        className={`self-start text-xs font-semibold px-3 py-1 rounded-md ${
+          categoryColors[business.category] ?? 'bg-neutral-100 text-neutral-600'
         }`}
       >
         {business.category}

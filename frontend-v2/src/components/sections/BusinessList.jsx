@@ -3,19 +3,19 @@ import BusinessCard from '../ui/BusinessCard'
 
 export default function BusinessList({ businesses, regionName }) {
   return (
-    <section className="py-16 px-4 bg-brand-cream-light">
-      <div className="max-w-7xl mx-auto">
+    <section className="py-20 sm:py-28 px-4 sm:px-6 bg-brand-cream-light">
+      <div className="w-full max-w-[1200px] mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="mb-10"
+          className="mb-16 sm:mb-20"
         >
-          <p className="text-brand-green font-semibold tracking-widest text-sm uppercase mb-2">Partner Businesses</p>
-          <h2 className="font-display text-3xl sm:text-4xl font-bold text-brand-green-dark">
+          <p className="text-brand-green font-semibold tracking-[0.1em] text-xs sm:text-sm uppercase mb-3">Partner Businesses</p>
+          <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold text-brand-green-dark leading-tight">
             {regionName} — Where to Save
           </h2>
-          <p className="mt-2 text-gray-500 text-sm">
+          <p className="mt-4 text-neutral-600 text-base sm:text-lg leading-relaxed">
             Show your card at any of these {businesses.length} partner businesses to receive your discount.
           </p>
         </motion.div>
@@ -27,7 +27,7 @@ export default function BusinessList({ businesses, regionName }) {
             hidden: {},
             show: { transition: { staggerChildren: 0.07 } },
           }}
-          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5"
+          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6"
         >
           {businesses.map((biz) => (
             <motion.div

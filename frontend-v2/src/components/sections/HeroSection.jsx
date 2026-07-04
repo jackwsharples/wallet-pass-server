@@ -4,41 +4,36 @@ import { regions } from '../../data/regions'
 
 export default function HeroSection() {
   return (
-    <section className="min-h-[88vh] flex items-center bg-brand-cream-light overflow-hidden relative">
-      {/* Decorative background circle */}
-      <div className="absolute -right-32 -top-32 w-[600px] h-[600px] bg-brand-cream rounded-full opacity-60 pointer-events-none" />
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 w-full grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+    <section className="min-h-screen flex items-center bg-brand-cream-light overflow-hidden">
+      <div className="w-full max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20 lg:py-28 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
         {/* Left: Text */}
         <div>
           <motion.div
-            initial={{ opacity: 0, y: 24 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
+            transition={{ duration: 0.4 }}
           >
-            <span className="inline-block bg-brand-green text-brand-cream text-xs font-bold tracking-widest px-3 py-1.5 rounded-full mb-6">
-              ONE CARD — UNLIMITED SAVINGS
+            <span className="inline-block text-brand-green font-semibold text-xs tracking-[0.15em] uppercase mb-6">
+              One Card — Unlimited Savings
             </span>
           </motion.div>
 
           <motion.h1
-            initial={{ opacity: 0, y: 28 }}
+            initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="font-display text-6xl sm:text-7xl lg:text-8xl font-bold text-brand-green-dark leading-none tracking-tight"
+            className="font-display text-5xl sm:text-6xl lg:text-7xl font-bold text-brand-green-dark leading-tight tracking-tight"
           >
-            <span className="block">ONE</span>
-            <span className="block">CARD.</span>
-            <span className="block text-brand-green">UNLIMITED</span>
-            <span className="block">LOCAL</span>
-            <span className="block">SAVINGS.</span>
+            One Card.
+            <br />
+            <span className="text-brand-green">Unlimited Local Savings.</span>
           </motion.h1>
 
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.25 }}
-            className="mt-6 text-gray-600 text-lg max-w-md"
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="mt-8 text-neutral-600 text-base sm:text-lg leading-relaxed max-w-xl"
           >
             Support the businesses that make your community unique. One card, valid all year, unlimited use at every partner location.
           </motion.p>
@@ -46,43 +41,40 @@ export default function HeroSection() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.35 }}
-            className="mt-8 flex flex-wrap gap-4"
+            transition={{ duration: 0.5, delay: 0.3 }}
+            className="mt-10 flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4"
           >
             <Link
               to="/get-your-card"
-              className="bg-brand-green-dark text-white font-semibold px-8 py-3.5 rounded-xl hover:bg-brand-green hover:scale-[1.03] transition-all duration-200 shadow-lg shadow-brand-green/20"
+              className="inline-flex items-center justify-center bg-brand-green-dark text-white font-semibold px-6 sm:px-8 py-3 sm:py-3.5 rounded-lg hover:bg-brand-green transition-colors duration-200 min-h-[44px]"
             >
               Get Your Card — $25
             </Link>
             <Link
               to="/#regions"
-              className="border-2 border-brand-green text-brand-green font-semibold px-8 py-3.5 rounded-xl hover:bg-brand-green hover:text-white hover:scale-[1.03] transition-all duration-200"
+              className="inline-flex items-center justify-center border-2 border-brand-green text-brand-green font-semibold px-6 sm:px-8 py-3 sm:py-3.5 rounded-lg hover:bg-brand-green-pale transition-colors duration-200 min-h-[44px]"
             >
               View Regions
             </Link>
           </motion.div>
 
-          {/* Social proof */}
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.5 }}
-            className="mt-10 flex items-center gap-6 text-sm text-gray-500"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+            className="mt-14 sm:mt-16 grid grid-cols-3 gap-8 max-w-sm"
           >
             <div>
-              <p className="font-bold text-2xl text-brand-green-dark">5</p>
-              <p>Regions</p>
+              <p className="font-bold text-3xl sm:text-4xl text-brand-green">5</p>
+              <p className="text-xs sm:text-sm text-neutral-600 mt-2">Regions</p>
             </div>
-            <div className="w-px h-10 bg-gray-300" />
             <div>
-              <p className="font-bold text-2xl text-brand-green-dark">50+</p>
-              <p>Partner businesses</p>
+              <p className="font-bold text-3xl sm:text-4xl text-brand-green">50+</p>
+              <p className="text-xs sm:text-sm text-neutral-600 mt-2">Partner<br />Businesses</p>
             </div>
-            <div className="w-px h-10 bg-gray-300" />
             <div>
-              <p className="font-bold text-2xl text-brand-green-dark">$25</p>
-              <p>For the whole year</p>
+              <p className="font-bold text-3xl sm:text-4xl text-brand-green">$25</p>
+              <p className="text-xs sm:text-sm text-neutral-600 mt-2">All Year</p>
             </div>
           </motion.div>
         </div>
@@ -92,7 +84,7 @@ export default function HeroSection() {
           initial={{ opacity: 0, x: 40 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="flex justify-center lg:justify-end"
+          className="hidden lg:flex justify-end"
         >
           <div className="relative">
             {/* Phone frame */}
@@ -134,27 +126,6 @@ export default function HeroSection() {
                 </div>
               </div>
             </div>
-
-            {/* Floating badge */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.9, duration: 0.3 }}
-              className="absolute -left-10 top-24 bg-white rounded-xl px-3 py-2 shadow-lg"
-            >
-              <p className="text-xs text-gray-500">Works with</p>
-              <p className="text-sm font-bold text-brand-green-dark">Apple & Google Wallet</p>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 1.1, duration: 0.3 }}
-              className="absolute -right-8 bottom-28 bg-brand-green text-white rounded-xl px-3 py-2 shadow-lg"
-            >
-              <p className="text-xs text-brand-cream/70">Valid through</p>
-              <p className="text-sm font-bold">Dec 31, {new Date().getFullYear()}</p>
-            </motion.div>
           </div>
         </motion.div>
       </div>

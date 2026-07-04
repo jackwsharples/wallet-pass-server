@@ -1,10 +1,15 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
+import { useAuth } from '../contexts/AuthContext'
 import { regions } from '../data/regions'
 import PurchaseModal from '../components/ui/PurchaseModal'
+import AdminTestCheckout from '../components/ui/AdminTestCheckout'
 
 export default function GetYourCard() {
+  const { user } = useAuth()
   const [selectedRegion, setSelectedRegion] = useState(null)
+  const [expandedRegionId, setExpandedRegionId] = useState(null)
+  const [testCodeGenerated, setTestCodeGenerated] = useState(null)
 
   return (
     <div className="min-h-screen bg-brand-cream-light">
@@ -62,11 +67,34 @@ export default function GetYourCard() {
 
                 {/* STRIPE INTEGRATION: onClick should initiate Stripe Checkout session for this region */}
                 <button
-                  onClick={() => setSelectedRegion(region)}
-                  className="w-full bg-brand-green text-white font-semibold py-2.5 rounded-xl hover:bg-brand-green-light hover:scale-[1.02] transition-all duration-200"
+                  onClick={() => {
+                    setSelectedRegion(region)
+                    setExpandedRegionId(region.id)
+                  }}
+                  className="w-full bg-brand-green text-white font-semibold py-2.5 rounded-xl hover:bg-brand-green-light hover:scale-[1.02] transition-all duration-200 min-h-[44px]"
                 >
                   Buy Now — ${region.price}
                 </button>
+
+                {/* Admin Test Mode */}
+                {user?.role === 'admin' && expandedRegionId === region.id && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="mt-4 pt-4 border-t border-gray-200"
+                  >
+                    <AdminTestCheckout
+                      region={region}
+                      onSuccess={(data) => {
+                        setTestCodeGenerated(data)
+                        // Optional: close the expansion after success
+                        setTimeout(() => setExpandedRegionId(null), 2000)
+                      }}
+                    />
+                  </motion.div>
+                )}
               </div>
             </motion.div>
           ))}

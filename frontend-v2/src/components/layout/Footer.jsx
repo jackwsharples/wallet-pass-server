@@ -3,9 +3,9 @@ import { regions } from '../../data/regions'
 
 export default function Footer() {
   return (
-    <footer className="bg-brand-green-dark text-brand-cream/80">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
+    <footer className="bg-brand-green-dark text-brand-cream/80 border-t border-brand-green/20">
+      <div className="w-full max-w-[1200px] mx-auto px-4 sm:px-6 py-16 sm:py-20">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12">
           {/* Brand */}
           <div className="lg:col-span-2">
             <div className="mb-4">

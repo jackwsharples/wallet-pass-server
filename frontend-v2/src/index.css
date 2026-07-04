@@ -1,22 +1,63 @@
 @import "tailwindcss";
 
 @theme {
-  /* Brand palette */
+  /* Primary brand green palette (refined) */
   --color-brand-green: #2d6a4f;
   --color-brand-green-dark: #1b4332;
   --color-brand-green-light: #40916c;
+  --color-brand-green-lighter: #52b788;
+  --color-brand-green-pale: #f0f9f5;
+
+  /* Accent colors (minimal use) */
   --color-brand-cream: #f5e9c8;
   --color-brand-cream-light: #fdf6e3;
   --color-brand-gold: #c9a84c;
 
+  /* Neutral grays for clarity */
+  --color-neutral-50: #f9fafb;
+  --color-neutral-100: #f3f4f6;
+  --color-neutral-200: #e5e7eb;
+  --color-neutral-300: #d1d5db;
+  --color-neutral-400: #9ca3af;
+  --color-neutral-500: #6b7280;
+  --color-neutral-600: #4b5563;
+  --color-neutral-700: #374151;
+
   /* Typography */
   --font-sans: 'Inter', system-ui, sans-serif;
   --font-display: 'Oswald', 'Impact', sans-serif;
+
+  /* Spacing: Strict mobile-first scaling */
+  --spacing-mobile: 1rem;
+  --spacing-mobile-lg: 1.5rem;
+  --spacing-tablet: 1.5rem;
+  --spacing-desktop: 2rem;
+
+  /* Max width constraint */
+  --max-width-content: 75rem; /* 1200px */
 }
 
 @layer base {
   body {
-    @apply bg-brand-cream-light text-brand-green-dark font-sans;
+    @apply bg-white text-neutral-700 font-sans;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-brand-green-dark font-display font-bold;
+  }
+
+  /* Responsive breakpoint overrides for consistency */
+  @media (max-width: 640px) {
+    body {
+      font-size: 16px;
+    }
+  }
+
+  @media (min-width: 641px) and (max-width: 1024px) {
+    body {
+      font-size: 17px;
+    }
   }
 }

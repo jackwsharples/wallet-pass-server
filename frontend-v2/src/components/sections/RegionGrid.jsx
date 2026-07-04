@@ -4,18 +4,18 @@ import RegionCard from '../ui/RegionCard'
 
 export default function RegionGrid({ onBuyClick }) {
   return (
-    <section id="regions" className="py-20 px-4 bg-brand-cream-light">
-      <div className="max-w-7xl mx-auto">
+    <section id="regions" className="py-20 sm:py-28 px-4 sm:px-6 bg-brand-cream-light">
+      <div className="w-full max-w-[1200px] mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
-          className="text-center mb-14"
+          className="text-center mb-16 sm:mb-20"
         >
-          <p className="text-brand-green font-semibold tracking-widest text-sm uppercase mb-3">Available Now</p>
-          <h2 className="font-display text-4xl sm:text-5xl font-bold text-brand-green-dark">Choose Your Region</h2>
-          <p className="mt-4 text-gray-500 max-w-xl mx-auto">
+          <p className="text-brand-green font-semibold tracking-[0.1em] text-xs sm:text-sm uppercase mb-3">Available Now</p>
+          <h2 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold text-brand-green-dark leading-tight">Choose Your Region</h2>
+          <p className="mt-6 text-neutral-600 text-base sm:text-lg leading-relaxed max-w-2xl mx-auto">
             Each card is specific to its region and gives you access to all partner businesses in that area.
           </p>
         </motion.div>
@@ -28,7 +28,7 @@ export default function RegionGrid({ onBuyClick }) {
             hidden: {},
             show: { transition: { staggerChildren: 0.08 } },
           }}
-          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-6"
         >
           {regions.map((region) => (
             <motion.div

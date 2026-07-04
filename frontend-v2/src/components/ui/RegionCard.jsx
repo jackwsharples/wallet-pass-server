@@ -4,9 +4,9 @@ import { motion } from 'framer-motion'
 export default function RegionCard({ region, onBuyClick }) {
   return (
     <motion.div
-      whileHover={{ y: -6, boxShadow: '0 20px 48px rgba(0,0,0,0.18)' }}
-      transition={{ duration: 0.25 }}
-      className="bg-brand-green rounded-2xl overflow-hidden flex flex-col"
+      whileHover={{ y: -2 }}
+      transition={{ duration: 0.2 }}
+      className="bg-brand-green rounded-lg overflow-hidden flex flex-col h-full"
     >
       {/* Card graphic */}
       <Link to={`/regions/${region.slug}`} className="block">
@@ -27,24 +27,22 @@ export default function RegionCard({ region, onBuyClick }) {
         </div>
       </Link>
 
-      {/* Info */}
-      <div className="p-4 flex flex-col gap-3 flex-1">
+      <div className="p-5 sm:p-6 flex flex-col gap-4 flex-1">
         <div>
-          <p className="text-white font-semibold">{region.name} Discount Card</p>
-          <p className="text-brand-gold font-bold text-xl">${region.price}</p>
+          <p className="text-white font-semibold text-sm sm:text-base">{region.name} Discount Card</p>
+          <p className="text-brand-cream font-bold text-2xl sm:text-3xl mt-1">${region.price}</p>
         </div>
 
-        <div className="flex flex-col gap-2">
-          {/* STRIPE INTEGRATION: Replace this button's onClick with Stripe Checkout session creation */}
+        <div className="flex flex-col gap-3 mt-auto">
           <button
             onClick={() => onBuyClick(region)}
-            className="w-full bg-brand-cream text-brand-green-dark font-semibold py-2.5 rounded-lg hover:bg-brand-gold hover:scale-[1.02] transition-all duration-200 shadow-sm"
+            className="w-full bg-brand-cream text-brand-green-dark font-semibold py-3 sm:py-3.5 rounded-md hover:bg-brand-gold transition-colors duration-200 min-h-[44px] text-sm sm:text-base"
           >
             Buy
           </button>
           <Link
             to={`/regions/${region.slug}`}
-            className="w-full text-center text-brand-cream/80 hover:text-brand-cream text-sm transition-colors"
+            className="w-full text-center text-brand-cream/70 hover:text-brand-cream text-xs sm:text-sm transition-colors py-2 min-h-[44px] flex items-center justify-center"
           >
             View businesses →
           </Link>

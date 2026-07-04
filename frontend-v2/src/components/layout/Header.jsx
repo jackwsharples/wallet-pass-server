@@ -1,17 +1,24 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useAuth } from '../../contexts/AuthContext'
 import { regions } from '../../data/regions'
 
 export default function Header() {
+  const { user, logout } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [regionsOpen, setRegionsOpen] = useState(false)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
   const dropdownRef = useRef(null)
+  const userMenuRef = useRef(null)
 
   useEffect(() => {
     const handler = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setRegionsOpen(false)
+      }
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
+        setUserMenuOpen(false)
       }
     }
     document.addEventListener('mousedown', handler)
@@ -33,8 +40,8 @@ export default function Header() {
   const activeClass = 'text-brand-gold'
 
   return (
-    <header className="bg-brand-green-dark sticky top-0 z-50 shadow-md">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <header className="bg-brand-green-dark sticky top-0 z-50 border-b border-brand-green/20">
+      <div className="w-full max-w-[1200px] mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16">
 
           {/* Logo */}
@@ -113,13 +120,61 @@ export default function Header() {
             </NavLink>
           </nav>
 
-          {/* CTA */}
-          <Link
-            to="/get-your-card"
-            className="hidden md:inline-flex items-center border-2 border-white text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-white hover:text-brand-green-dark transition-all duration-200"
-          >
-            GET YOUR CARD
-          </Link>
+          {/* Auth UI or CTA */}
+          {user ? (
+            <div className="hidden md:flex items-center gap-4">
+              <div className="relative" ref={userMenuRef}>
+                <button
+                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  className="flex items-center gap-2 text-white hover:text-brand-gold transition-colors"
+                >
+                  {user.profilePicture && (
+                    <img src={user.profilePicture} alt={user.name} className="w-8 h-8 rounded-full" />
+                  )}
+                  <span className="text-sm font-medium hidden lg:inline">{user.name || 'Account'}</span>
+                  <svg className="w-4 h-4 text-white/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                <AnimatePresence>
+                  {userMenuOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                      transition={{ duration: 0.18 }}
+                      className="absolute top-full right-0 mt-2 w-48 bg-white rounded-lg shadow-xl overflow-hidden border border-gray-100"
+                    >
+                      <Link
+                        to="/account"
+                        className="block px-4 py-3 text-brand-green-dark hover:bg-brand-cream-light font-medium text-sm transition-colors border-b border-gray-100"
+                        onClick={() => setUserMenuOpen(false)}
+                      >
+                        My Account
+                      </Link>
+                      <button
+                        onClick={async () => {
+                          await logout()
+                          setUserMenuOpen(false)
+                        }}
+                        className="w-full text-left px-4 py-3 text-brand-green-dark hover:bg-brand-cream-light font-medium text-sm transition-colors"
+                      >
+                        Log Out
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+          ) : (
+            <Link
+              to="/login"
+              className="hidden md:inline-flex items-center border-2 border-white text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-white hover:text-brand-green-dark transition-all duration-200 min-h-[44px]"
+            >
+              SIGN IN
+            </Link>
+          )}
 
           {/* Mobile hamburger */}
           <button
@@ -188,13 +243,36 @@ export default function Header() {
                 FAQ
               </NavLink>
 
-              <Link
-                to="/get-your-card"
-                className="mt-1 w-full text-center border-2 border-white text-white font-semibold py-2.5 rounded-lg hover:bg-white hover:text-brand-green-dark transition-all"
-                onClick={() => setMobileOpen(false)}
-              >
-                GET YOUR CARD
-              </Link>
+              <div className="border-t border-white/10 mt-4 pt-4 flex flex-col gap-3">
+                {user ? (
+                  <>
+                    <Link
+                      to="/account"
+                      className="text-white/80 hover:text-white font-semibold text-base transition-colors"
+                      onClick={() => setMobileOpen(false)}
+                    >
+                      My Account
+                    </Link>
+                    <button
+                      onClick={async () => {
+                        await logout()
+                        setMobileOpen(false)
+                      }}
+                      className="text-left text-white/80 hover:text-white font-semibold text-base transition-colors"
+                    >
+                      Log Out
+                    </button>
+                  </>
+                ) : (
+                  <Link
+                    to="/login"
+                    className="w-full text-center border-2 border-white text-white font-semibold py-2.5 rounded-lg hover:bg-white hover:text-brand-green-dark transition-all"
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    SIGN IN
+                  </Link>
+                )}
+              </div>
             </nav>
           </motion.div>
         )}
