@@ -1,6 +1,6 @@
 import { Express, Request, Response, NextFunction } from 'express';
 import { OAuth2Client } from 'google-auth-library';
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 import { getPrisma } from './lib/prisma.js';
 
 const prisma = getPrisma();
@@ -87,14 +87,20 @@ export function registerAuthRoutes(app: Express) {
         });
       }
 
+      if (!JWT_SECRET) {
+        throw new Error('JWT_SECRET not configured');
+      }
+
       const sessionToken = jwt.sign(
         {
           userId: user.id,
           email: user.email,
           name: user.name,
         },
-        JWT_SECRET as string,
-        { expiresIn: JWT_EXPIRES_IN }
+        JWT_SECRET,
+        {
+          expiresIn: JWT_EXPIRES_IN || '7d',
+        } as SignOptions
       );
 
       res.json({
