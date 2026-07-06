@@ -46,3 +46,22 @@ model DiscountCode {
 
   @@index([stripeSessionId])
 }
+
+enum UserRole {
+  user
+  admin
+}
+
+model User {
+  id              String     @id @default(cuid())
+  googleId        String     @unique
+  email           String     @unique
+  name            String?
+  profilePicture  String?
+  role            UserRole   @default(user)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  @@index([email])
+  @@index([googleId])
+}
