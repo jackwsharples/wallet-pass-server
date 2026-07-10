@@ -1,29 +1,45 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState } from 'react'
 import Button from './Button'
+import { useAuth } from '../../contexts/AuthContext'
 
 export default function PurchaseModal({ region, onClose }) {
-  const [format, setFormat] = useState('digital')
   const [isGift, setIsGift] = useState(false)
 
-  const formatOptions = [
-    { id: 'digital', label: 'Digital Only', desc: 'Add to Apple or Google Wallet instantly', price: 25 },
-    { id: 'both', label: 'Digital + Physical', desc: 'Digital pass + physical card mailed to you', price: 30 },
-  ]
+  const priceId = 'price_1Trfkx07SOA5o1E7B8yImW1f'
+  const price = 25
+  const [loading, setLoading] = useState(false)
+  const { user } = useAuth()
 
-  const selected = formatOptions.find((f) => f.id === format)
+  async function handleCheckout() {
+    setLoading(true)
+    try {
+      const res = await fetch(import.meta.env.VITE_API_URL + '/api/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          priceId: priceId,
+          email: user?.email || undefined,
+          metadata: {
+            region: region.id,
+            regionName: region.name,
+            format: 'digital',
+            isGift: isGift.toString(),
+          },
+        }),
+      })
 
-  function handleCheckout() {
-    // STRIPE INTEGRATION POINT:
-    // Call your backend endpoint here to create a Stripe Checkout session.
-    // Example:
-    //   const res = await fetch('/api/checkout', {
-    //     method: 'POST',
-    //     body: JSON.stringify({ regionId: region.id, format, isGift, price: selected.price }),
-    //   })
-    //   const { url } = await res.json()
-    //   window.location.href = url
-    alert('Stripe checkout coming soon!')
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || 'Checkout failed')
+      }
+
+      const data = await res.json()
+      window.location.href = data.url
+    } catch (err) {
+      alert('Error: ' + (err.message || 'Could not start checkout'))
+      setLoading(false)
+    }
   }
 
   return (
@@ -66,35 +82,13 @@ export default function PurchaseModal({ region, onClose }) {
 
             {/* Body */}
             <div className="p-6 flex flex-col gap-5">
-              {/* Format selection */}
-              <div>
-                <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Choose Format</p>
-                <div className="flex flex-col gap-2">
-                  {formatOptions.map((opt) => (
-                    <label
-                      key={opt.id}
-                      className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
-                        format === opt.id
-                          ? 'border-brand-green bg-brand-cream/30'
-                          : 'border-gray-200 hover:border-brand-green/40'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="format"
-                        value={opt.id}
-                        checked={format === opt.id}
-                        onChange={() => setFormat(opt.id)}
-                        className="accent-brand-green"
-                      />
-                      <div className="flex-1">
-                        <p className="font-semibold text-brand-green-dark text-sm">{opt.label}</p>
-                        <p className="text-gray-500 text-xs">{opt.desc}</p>
-                      </div>
-                      <p className="font-bold text-brand-green">${opt.price}</p>
-                    </label>
-                  ))}
+              {/* Format info */}
+              <div className="flex items-center gap-3 p-4 rounded-xl bg-brand-cream/30 border border-brand-green/20">
+                <div className="flex-1">
+                  <p className="font-semibold text-brand-green-dark text-sm">Digital Wallet Pass</p>
+                  <p className="text-gray-500 text-xs mt-1">Add to Apple or Google Wallet instantly</p>
                 </div>
+                <p className="font-bold text-brand-green text-lg">${price}</p>
               </div>
 
               {/* Gift toggle */}
@@ -109,8 +103,13 @@ export default function PurchaseModal({ region, onClose }) {
               </label>
 
               {/* CTA */}
-              <Button variant="secondary" className="w-full text-base py-3" onClick={handleCheckout}>
-                Continue to Checkout — ${selected.price}
+              <Button
+                variant="secondary"
+                className="w-full text-base py-3"
+                onClick={handleCheckout}
+                disabled={loading}
+              >
+                {loading ? 'Loading...' : `Continue to Checkout — $${price}`}
               </Button>
 
               <p className="text-center text-xs text-gray-400">

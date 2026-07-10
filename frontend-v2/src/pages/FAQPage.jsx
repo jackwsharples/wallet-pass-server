@@ -5,7 +5,6 @@ const faqs = [
   { q: 'How does the Local Discount Card work?', a: 'After purchasing, you receive a digital pass that can be added to Apple Wallet or Google Pay. Simply show the card on your phone at any partner business to receive your discount.' },
   { q: 'How long is the card valid?', a: `The card is valid through December 31, ${new Date().getFullYear()}. Cards purchased at any point during the year are valid through year-end.` },
   { q: 'Can I use the card more than once?', a: 'Yes! The card provides unlimited use at all partner businesses throughout the validity period. Use it as often as you like.' },
-  { q: 'Is there a physical card option?', a: 'Yes, you can choose digital-only or a digital + physical combo at checkout. Physical cards are mailed to the address you provide.' },
   { q: 'Can I buy a card as a gift?', a: "Absolutely. At checkout, select the 'purchasing as a gift' option to enter the recipient's details." },
   { q: 'What regions are available?', a: 'We currently serve Boone NC, Charleston SC, Greenville SC, Charlotte NC, and Columbia SC. More regions are coming soon.' },
   { q: 'How do I become a partner business?', a: "Visit our 'Partner With Us' page and fill out the inquiry form. Our team will be in touch within 2–3 business days." },

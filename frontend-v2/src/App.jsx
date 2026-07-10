@@ -4,6 +4,7 @@ import Layout from './components/layout/Layout'
 import HomePage from './pages/HomePage'
 import RegionPage from './pages/RegionPage'
 import GetYourCard from './pages/GetYourCard'
+import SuccessPage from './pages/SuccessPage'
 import AboutPage from './pages/AboutPage'
 import FAQPage from './pages/FAQPage'
 import PartnerPage from './pages/PartnerPage'
@@ -19,6 +20,7 @@ export default function App() {
             <Route index element={<HomePage />} />
             <Route path="regions/:slug" element={<RegionPage />} />
             <Route path="get-your-card" element={<GetYourCard />} />
+            <Route path="success" element={<SuccessPage />} />
             <Route path="about" element={<AboutPage />} />
             <Route path="faq" element={<FAQPage />} />
             <Route path="partner" element={<PartnerPage />} />

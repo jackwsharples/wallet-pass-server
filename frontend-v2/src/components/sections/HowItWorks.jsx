@@ -4,7 +4,7 @@ const steps = [
   {
     number: '01',
     title: 'Purchase Your Card',
-    desc: 'Buy online for just $25. Choose digital, physical, or both.',
+    desc: 'Buy online for just $25. Instant digital delivery to your wallet.',
     icon: '🛒',
   },
   {
