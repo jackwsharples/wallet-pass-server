@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 
 const AuthContext = createContext(null)
+const API_URL = import.meta.env.VITE_API_URL || ''
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
@@ -14,7 +15,7 @@ export function AuthProvider({ children }) {
         const storedToken = localStorage.getItem('sessionToken')
         if (storedToken) {
           setSessionToken(storedToken)
-          const response = await fetch('/api/auth/me', {
+          const response = await fetch(API_URL + '/api/auth/me', {
             headers: { Authorization: `Bearer ${storedToken}` },
           })
           if (response.ok) {
@@ -39,7 +40,7 @@ export function AuthProvider({ children }) {
 
   const login = async (googleToken) => {
     try {
-      const response = await fetch('/api/auth/google', {
+      const response = await fetch(API_URL + '/api/auth/google', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: googleToken }),
@@ -64,7 +65,7 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' })
+      await fetch(API_URL + '/api/auth/logout', { method: 'POST' })
     } catch (error) {
       console.error('Logout error:', error)
     } finally {

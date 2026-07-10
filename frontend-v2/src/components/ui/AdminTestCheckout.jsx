@@ -25,7 +25,7 @@ export default function AdminTestCheckout({ region, onSuccess }) {
         return
       }
 
-      const response = await fetch('/api/admin/test-checkout', {
+      const response = await fetch(import.meta.env.VITE_API_URL + '/api/admin/test-checkout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

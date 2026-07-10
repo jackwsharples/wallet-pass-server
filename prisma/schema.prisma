@@ -43,8 +43,10 @@ model DiscountCode {
   status          DiscountCodeStatus  @default(UNUSED)
   createdAt       DateTime            @default(now())
   usedAt          DateTime?
+  metadata        Json?
 
   @@index([stripeSessionId])
+  @@index([email])
 }
 
 enum UserRole {

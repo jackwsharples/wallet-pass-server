@@ -1,7 +1,9 @@
 import express from 'express';
 import { randomBytes } from 'node:crypto';
+import Stripe from 'stripe';
 import { getPrisma } from './lib/prisma.js';
 import { asyncHandler } from './lib/async-handler.js';
+import { verifySessionToken } from './auth-routes.js';
 import { ensureCertFilesOnDisk, createPassBuffer } from './pass.js';
 
 type CodeRow = {
@@ -61,13 +63,45 @@ export function registerDiscountRoutes(app: express.Express) {
     if (!stripeSessionId || typeof stripeSessionId !== 'string' || stripeSessionId.trim().length < 6) {
       return res.status(400).json({ error: 'Missing stripeSessionId' });
     }
-
-    const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : null;
     const sid = stripeSessionId.trim();
+
+    // Verify with Stripe that this session exists and was actually paid,
+    // and capture buyer email + region metadata for the account page
+    const stripeKey = process.env.STRIPE_SECRET_KEY;
+    if (!stripeKey) return res.status(500).json({ error: 'Stripe not configured' });
+    const stripe = new Stripe(stripeKey, { apiVersion: '2024-06-20' });
+    let session: Stripe.Checkout.Session;
+    try {
+      session = await stripe.checkout.sessions.retrieve(sid);
+    } catch (err: any) {
+      if (typeof err?.type === 'string' && err.type.startsWith('Stripe') && Number(err.statusCode) < 500) {
+        return res.status(404).json({ error: 'Unknown checkout session' });
+      }
+      throw err;
+    }
+    if (session.payment_status !== 'paid') {
+      return res.status(402).json({ error: 'Payment not completed' });
+    }
+
+    const sessionEmail = session.customer_details?.email || session.customer_email || null;
+    const bodyEmail = typeof email === 'string' && email.trim() ? email.trim() : null;
+    const normalizedEmail = (bodyEmail || sessionEmail)?.toLowerCase() || null;
+    const metadata =
+      session.metadata && Object.keys(session.metadata).length > 0 ? session.metadata : undefined;
 
     // If a code already exists for this session, return it
     const existing = await prisma.discountCode.findUnique({ where: { stripeSessionId: sid } });
     if (existing) {
+      // Backfill email/metadata on codes created before these were captured
+      if ((!existing.email && normalizedEmail) || (!existing.metadata && metadata)) {
+        await prisma.discountCode.update({
+          where: { id: existing.id },
+          data: {
+            email: existing.email || normalizedEmail,
+            metadata: existing.metadata ?? metadata
+          }
+        });
+      }
       return res.json({ success: true, code: existing.code });
     }
 
@@ -89,7 +123,8 @@ export function registerDiscountRoutes(app: express.Express) {
           code: newCode,
           stripeSessionId: sid,
           email: normalizedEmail,
-          status: 'UNUSED'
+          status: 'UNUSED',
+          metadata
         }
       });
       return res.json({ success: true, code: row.code });
@@ -159,4 +194,38 @@ export function registerDiscountRoutes(app: express.Express) {
     res.setHeader('Content-Disposition', 'attachment; filename="discount_card.pkpass"');
     return res.end(buffer);
   }));
+
+  // Cards belonging to the logged-in user (matched by purchase email)
+  app.get(
+    '/api/my-cards',
+    verifySessionToken,
+    asyncHandler(async (req: express.Request & { user?: { id: string; email: string } }, res) => {
+      if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
+
+      const cards = await prisma.discountCode.findMany({
+        where: { email: req.user.email.toLowerCase() },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      res.json({
+        cards: cards.map((c) => {
+          const meta =
+            c.metadata && typeof c.metadata === 'object' && !Array.isArray(c.metadata)
+              ? (c.metadata as Record<string, any>)
+              : {};
+          const validUntil = new Date(c.createdAt);
+          validUntil.setFullYear(validUntil.getFullYear() + 1);
+          return {
+            code: c.code,
+            status: c.status,
+            createdAt: c.createdAt,
+            usedAt: c.usedAt,
+            validUntil,
+            region: meta.regionName || meta.region || null,
+            isGift: meta.isGift === 'true'
+          };
+        })
+      });
+    })
+  );
 }

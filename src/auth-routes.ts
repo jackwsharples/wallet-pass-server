@@ -111,6 +111,7 @@ export function registerAuthRoutes(app: Express) {
           name: user.name,
           profilePicture: user.profilePicture,
           role: user.role,
+          createdAt: user.createdAt,
         },
       });
     } catch (err) {
@@ -125,7 +126,7 @@ export function registerAuthRoutes(app: Express) {
       }
       const user = await prisma.user.findUnique({
         where: { id: req.user.id },
-        select: { id: true, email: true, name: true, profilePicture: true, role: true },
+        select: { id: true, email: true, name: true, profilePicture: true, role: true, createdAt: true },
       });
       if (!user) {
         return res.status(401).json({ error: 'User not found' });
