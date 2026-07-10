@@ -6,8 +6,8 @@ import { useAuth } from '../../contexts/AuthContext'
 export default function PurchaseModal({ region, onClose }) {
   const [isGift, setIsGift] = useState(false)
 
-  const priceId = 'price_1Trfkx07SOA5o1E7B8yImW1f'
-  const price = 25
+  const priceId = 'price_1Trgjm07SOA5o1E712jcRYV5'
+  const price = '0.50'
   const [loading, setLoading] = useState(false)
   const { user } = useAuth()
 
