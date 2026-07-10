@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { useSearchParams, useNavigate } from 'react-router-dom'
+import { useSearchParams, useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { redeemAndDownloadPass, isIOS, isSafari } from '../utils/redeemPass'
 
 export default function SuccessPage() {
   const [searchParams] = useSearchParams()
@@ -58,38 +59,7 @@ export default function SuccessPage() {
     setError(null)
 
     try {
-      const res = await fetch(import.meta.env.VITE_API_URL + '/api/redeem-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          code: code,
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-        }),
-      })
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.error || 'Invalid or used code')
-      }
-
-      const arrayBuffer = await res.arrayBuffer()
-      const blob = new Blob([arrayBuffer], { type: 'application/vnd.apple.pkpass' })
-      const url = URL.createObjectURL(blob)
-
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-
-      if (isIOS) {
-        window.location.href = url
-      } else {
-        const a = document.createElement('a')
-        a.href = url
-        a.download = 'discount_card.pkpass'
-        document.body.appendChild(a)
-        a.click()
-        a.remove()
-        setTimeout(() => URL.revokeObjectURL(url), 1000)
-      }
+      await redeemAndDownloadPass({ code, firstName, lastName })
     } catch (err) {
       console.error(err)
       setError(err.message || 'Error downloading pass. Please try again.')
@@ -161,6 +131,23 @@ export default function SuccessPage() {
               <p className="text-brand-cream/60 text-xs mt-2">Save this code; it works once</p>
             </div>
 
+            {/* Device warning */}
+            <div className="bg-amber-50 border-b border-amber-200 px-6 py-4">
+              <p className="text-amber-900 text-sm font-semibold">
+                ⚠️ Make sure you're on the iPhone or iPad you want this card on, using Safari.
+              </p>
+              <p className="text-amber-800 text-xs mt-1">
+                {isIOS() && isSafari()
+                  ? 'You\'re all set — redeeming below will add the pass to this device.'
+                  : 'Not on that device right now? No problem — save your code and redeem it later (or gift it to someone) at '}
+                {!(isIOS() && isSafari()) && (
+                  <Link to="/redeem" className="underline font-semibold">
+                    {window.location.origin}/redeem
+                  </Link>
+                )}
+              </p>
+            </div>
+
             {/* Instructions */}
             <div className="p-6 bg-brand-cream/30">
               <p className="text-sm font-semibold text-brand-green-dark uppercase tracking-wider mb-3">
@@ -181,7 +168,7 @@ export default function SuccessPage() {
                 </li>
               </ol>
               <p className="text-xs text-gray-500 mt-3 italic">
-                💡 On iPhone? Use Safari for the best experience.
+                💡 Wallet passes only install from Safari on an iOS device.
               </p>
             </div>
 

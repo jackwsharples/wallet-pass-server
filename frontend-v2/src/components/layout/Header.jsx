@@ -118,6 +118,13 @@ export default function Header() {
             >
               FAQ
             </NavLink>
+
+            <NavLink
+              to="/redeem"
+              className={({ isActive }) => `${navBase} ${isActive ? activeClass : ''}`}
+            >
+              Redeem
+            </NavLink>
           </nav>
 
           {/* Auth UI or CTA */}
@@ -241,6 +248,14 @@ export default function Header() {
                 onClick={() => setMobileOpen(false)}
               >
                 FAQ
+              </NavLink>
+
+              <NavLink
+                to="/redeem"
+                className={({ isActive }) => `${navBase} text-base ${isActive ? activeClass : ''}`}
+                onClick={() => setMobileOpen(false)}
+              >
+                Redeem
               </NavLink>
 
               <div className="border-t border-white/10 mt-4 pt-4 flex flex-col gap-3">
