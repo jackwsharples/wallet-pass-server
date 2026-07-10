@@ -44,6 +44,7 @@ model DiscountCode {
   createdAt       DateTime            @default(now())
   usedAt          DateTime?
   metadata        Json?
+  verifyToken     String?             @unique
 
   @@index([stripeSessionId])
   @@index([email])

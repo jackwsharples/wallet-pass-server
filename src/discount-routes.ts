@@ -152,6 +152,14 @@ export function registerDiscountRoutes(app: express.Express) {
     if (!row) return res.status(404).json({ error: 'Invalid code' });
     if (row.status !== 'UNUSED') return res.status(400).json({ error: 'Code already used' });
 
+    // Unguessable token for the QR verification page, one per pass
+    const verifyToken = row.verifyToken || randomBytes(16).toString('hex');
+    const verifyBase = (process.env.APP_BASE_URL || process.env.FRONTEND_ORIGIN?.split(',')[0] || '')
+      .trim()
+      .replace(/\/$/, '');
+    const validUntil = new Date(row.createdAt);
+    validUntil.setFullYear(validUntil.getFullYear() + 1);
+
     // Build the pass BEFORE marking the code used, so a generation failure
     // doesn't burn the customer's code
     const certPaths = await ensureCertFilesOnDisk();
@@ -167,6 +175,10 @@ export function registerDiscountRoutes(app: express.Express) {
     const safeLast = normalizeNamePart(lastName);
     const providedName = [safeFirst, safeLast].filter(Boolean).join(' ').trim();
     const holderName = providedName || row.email || 'Valued Member';
+    const existingMeta =
+      row.metadata && typeof row.metadata === 'object' && !Array.isArray(row.metadata)
+        ? (row.metadata as Record<string, any>)
+        : {};
     const buffer = await createPassBuffer({
       serialNumber: row.code,
       holderName,
@@ -174,14 +186,22 @@ export function registerDiscountRoutes(app: express.Express) {
       description,
       passTypeIdentifier,
       teamIdentifier,
-      certPaths
+      certPaths,
+      barcode: verifyBase ? { message: `${verifyBase}/verify/${verifyToken}` } : undefined,
+      validUntil,
+      region: existingMeta.regionName || existingMeta.region || undefined
     });
 
     // Atomic flip: only succeeds if the code is still UNUSED, so two
     // simultaneous redeems can't both get a pass
     const updated = await prisma.discountCode.updateMany({
       where: { code: normalized, status: 'UNUSED' },
-      data: { status: 'USED', usedAt: new Date() }
+      data: {
+        status: 'USED',
+        usedAt: new Date(),
+        verifyToken,
+        metadata: { ...existingMeta, holderName }
+      }
     });
     if (updated.count === 0) {
       return res.status(400).json({ error: 'Code already used' });
@@ -193,6 +213,54 @@ export function registerDiscountRoutes(app: express.Express) {
     res.setHeader('Content-Type', 'application/vnd.apple.pkpass');
     res.setHeader('Content-Disposition', 'attachment; filename="discount_card.pkpass"');
     return res.end(buffer);
+  }));
+
+  // Public pass verification — reached only via the QR code on a wallet pass.
+  // Tokens are 32-char random hex minted at redeem time, so passes can't be enumerated.
+  app.get('/api/verify/:token', asyncHandler(async (req, res) => {
+    const token = String(req.params.token || '');
+    if (!/^[a-f0-9]{32}$/.test(token)) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+
+    // Primary flow: DiscountCode
+    const row = await prisma.discountCode.findUnique({ where: { verifyToken: token } });
+    if (row) {
+      const meta =
+        row.metadata && typeof row.metadata === 'object' && !Array.isArray(row.metadata)
+          ? (row.metadata as Record<string, any>)
+          : {};
+      const validUntil = new Date(row.createdAt);
+      validUntil.setFullYear(validUntil.getFullYear() + 1);
+      return res.json({
+        holderName: meta.holderName || row.email || 'Member',
+        active: row.status === 'USED' && validUntil.getTime() > Date.now(),
+        validUntil,
+        region: meta.regionName || meta.region || null
+      });
+    }
+
+    // Legacy flow: ConfirmationCode stores the token in its metadata
+    const legacy = await prisma.confirmationCode.findFirst({
+      where: { metadata: { path: ['verifyToken'], equals: token } }
+    });
+    if (legacy) {
+      const meta =
+        legacy.metadata && typeof legacy.metadata === 'object' && !Array.isArray(legacy.metadata)
+          ? (legacy.metadata as Record<string, any>)
+          : {};
+      const validUntil = legacy.expiresAt
+        ? new Date(legacy.expiresAt)
+        : new Date(new Date(legacy.createdAt).setFullYear(new Date(legacy.createdAt).getFullYear() + 1));
+      return res.json({
+        holderName: meta.redeemName || legacy.customerEmail || 'Member',
+        active: legacy.status === 'USED' && validUntil.getTime() > Date.now(),
+        validUntil,
+        region: meta.regionName || meta.region || null
+      });
+    }
+
+    return res.status(404).json({ error: 'Not found' });
   }));
 
   // Cards belonging to the logged-in user (matched by purchase email)

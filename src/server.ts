@@ -3,6 +3,7 @@ import morgan from 'morgan';
 import compression from 'compression';
 import path from 'node:path';
 import fs from 'node:fs';
+import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
 import Stripe from 'stripe';
@@ -287,6 +288,20 @@ app.get('/api/pass/download', async (req, res, next) => {
       'Buyer';
     const serial = row.code;
 
+    // Mint (or reuse) the QR verification token for this pass
+    let verifyToken = typeof meta.verifyToken === 'string' ? meta.verifyToken : undefined;
+    if (!verifyToken) {
+      verifyToken = randomBytes(16).toString('hex');
+      await prisma.confirmationCode.update({
+        where: { id: row.id },
+        data: { metadata: { ...meta, verifyToken } }
+      });
+    }
+    const verifyBase = (process.env.APP_BASE_URL || '').replace(/\/$/, '');
+    const validUntil = row.expiresAt
+      ? new Date(row.expiresAt)
+      : new Date(new Date(row.createdAt).setFullYear(new Date(row.createdAt).getFullYear() + 1));
+
     // Generate the pass before touching response headers so a failure can still return JSON
     const { ensureCertFilesOnDisk, createPassBuffer } = await getPassLib();
     const certPaths = await ensureCertFilesOnDisk();
@@ -301,7 +316,10 @@ app.get('/api/pass/download', async (req, res, next) => {
       description,
       passTypeIdentifier,
       teamIdentifier,
-      certPaths
+      certPaths,
+      barcode: verifyBase ? { message: `${verifyBase}/verify/${verifyToken}` } : undefined,
+      validUntil,
+      region: meta.regionName || meta.region || undefined
     });
 
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');

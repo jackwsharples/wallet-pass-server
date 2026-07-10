@@ -5,6 +5,11 @@ import { PKPass } from 'passkit-generator';
 
 const RUNTIME_CERT_DIR = path.join(process.cwd(), '.run', 'certs');
 
+// Brand palette (must match frontend-v2/src/index.css)
+const BRAND_BG = 'rgb(27, 67, 50)'; // --color-brand-green-dark #1b4332
+const BRAND_FG = 'rgb(255, 255, 255)';
+const BRAND_LABEL = 'rgb(201, 168, 76)'; // --color-brand-gold #c9a84c
+
 function envB64(name) {
   const v = process.env[name];
   if (!v) return undefined;
@@ -42,12 +47,25 @@ export async function ensureCertFilesOnDisk() {
   return { signerCert, signerKey, wwdr };
 }
 
-function getImageBuffer(name) {
-  // 1x1 png transparent as fallback
-  const base = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Yf8a3sAAAAASUVORK5CYII=';
-  return Buffer.from(base, 'base64');
+function formatValidThru(date) {
+  return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+/**
+ * @param {{
+ *   serialNumber?: string,
+ *   holderName?: string,
+ *   organizationName?: string,
+ *   description?: string,
+ *   passTypeIdentifier?: string,
+ *   teamIdentifier?: string,
+ *   certPaths: { signerCert: string, signerKey: string, wwdr: string },
+ *   barcode?: { message: string, format?: string },
+ *   validUntil?: Date,
+ *   region?: string
+ * }} options
+ * @returns {Promise<Buffer>}
+ */
 export async function createPassBuffer({
   serialNumber,
   holderName,
@@ -57,26 +75,20 @@ export async function createPassBuffer({
   teamIdentifier,
   certPaths,
   barcode = undefined,
-  userRegion = undefined
+  validUntil = undefined,
+  region = undefined
 }) {
   const keyPassphrase = process.env.PASS_KEY_PASSPHRASE || undefined;
-  
-  // Safe Fallbacks
+
   const safeName = typeof holderName === 'string' && holderName.trim() ? holderName.trim() : 'Valued Member';
-  const qrUrl = (barcode && barcode.message) || process.env.PASS_QR_URL;
-  const safeMessage = qrUrl || 'https://localdiscountcard.net/?page_id=22';
+  const qrUrl = (barcode && barcode.message) || process.env.PASS_QR_URL || 'https://wallet-pass-server.vercel.app';
 
-  // Splitting the name for the layout
-  const nameParts = safeName.split(' ');
-  const firstName = nameParts[0] || 'Valued';
-  const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : 'Member';
-
-  // CACHE BUSTING
+  // Serial gets a timestamp suffix so re-downloads register as a fresh pass
   const baseSerial = serialNumber || 'TEST-000000';
   const safeSerial = `${baseSerial}-${Date.now()}`;
 
   const modelDir = await resolveModelDir();
-  
+
   const pass = await PKPass.from(
     {
       model: modelDir,
@@ -88,32 +100,54 @@ export async function createPassBuffer({
       }
     },
     {
-      description,
-      organizationName,
+      description: description || 'Local Discount Card',
+      organizationName: organizationName || 'Local Discount Card',
       passTypeIdentifier,
       teamIdentifier,
       serialNumber: safeSerial,
-      // Updated to match your exact template colors
-      backgroundColor: 'rgb(48, 112, 87)',
-      foregroundColor: 'rgb(255, 255, 255)',
-      labelColor: 'rgb(255, 255, 255)'// Left blank so your new image handles the branding
+      logoText: 'Local Discount Card',
+      backgroundColor: BRAND_BG,
+      foregroundColor: BRAND_FG,
+      labelColor: BRAND_LABEL
     }
   );
 
-  // Set the pass type
-  // Set the pass type
   pass.type = 'storeCard';
 
-  pass.secondaryFields.push({ key: 'firstName', label: 'FIRST NAME', value: firstName });
-  pass.secondaryFields.push({ key: 'lastName', label: 'LAST NAME', value: lastName });
-  pass.secondaryFields.push({ key: 'tier', label: 'TIER', value: 'Member' });
+  // Region sits top-right like an airline gate number; header fields are also
+  // what shows when the pass is stacked in Wallet
+  if (region) {
+    pass.headerFields.push({ key: 'region', label: 'REGION', value: String(region).toUpperCase() });
+  }
 
-  // ✅ correct way to set QR barcode in v3.5.2
+  // Front: two fields only — clean, minimal
+  pass.secondaryFields.push({ key: 'member', label: 'MEMBER', value: safeName });
+  if (validUntil) {
+    pass.secondaryFields.push({ key: 'validThru', label: 'VALID THRU', value: formatValidThru(validUntil) });
+  }
+
+  // Details live on the back of the pass
+  pass.backFields.push({ key: 'memberId', label: 'Member ID', value: baseSerial });
+  if (region) {
+    pass.backFields.push({ key: 'regionBack', label: 'Region', value: region });
+  }
+  pass.backFields.push({
+    key: 'about',
+    label: 'About',
+    value: 'Show this card at participating local businesses to receive your member discount.'
+  });
+  pass.backFields.push({ key: 'website', label: 'Website', value: 'https://wallet-pass-server.vercel.app' });
+
+  // Wallet dims/expires the pass natively after the membership year
+  if (validUntil) {
+    pass.setExpirationDate(new Date(validUntil));
+  }
+
   pass.setBarcodes({
     format: 'PKBarcodeFormatQR',
-    message: safeMessage,
+    message: qrUrl,
     messageEncoding: 'iso-8859-1',
-    altText: 'Scan to verify'
+    altText: baseSerial
   });
 
   if (typeof pass.getAsBuffer === 'function') return await pass.getAsBuffer();
@@ -133,72 +167,6 @@ export async function createPassBuffer({
 
 async function resolveModelDir() {
   const staticDir = path.join(process.cwd(), 'pass-model.pass');
-  if (fs.existsSync(staticDir)) {
-    await ensureModelAssets(staticDir);
-    return staticDir;
-  }
-  return await buildInMemoryModel();
-}
-
-async function ensureModelAssets(dir) {
-  const ensure = async (name) => {
-    const p = path.join(dir, name);
-    if (!fs.existsSync(p)) await fsp.writeFile(p, getImageBuffer(name));
-  };
-  
-  await ensure('icon.png');
-  await ensure('icon@2x.png');
-  
-  // Adding the strip image to the bundle
-  await ensure('strip.png');
-  await ensure('strip@2x.png');
-
-  const icon1x = path.join(dir, 'icon.png');
-  const icon2x = path.join(dir, 'icon@2x.png');
-  const logo1x = path.join(dir, 'logo.png');
-  const logo2x = path.join(dir, 'logo@2x.png');
-
-  if (!fs.existsSync(logo1x) && fs.existsSync(icon1x)) {
-    await fsp.copyFile(icon1x, logo1x);
-  } else if (!fs.existsSync(logo1x)) {
-    await ensure('logo.png');
-  }
-  if (!fs.existsSync(logo2x)) {
-    if (fs.existsSync(icon2x)) {
-      await fsp.copyFile(icon2x, logo2x);
-    } else {
-      await ensure('logo@2x.png');
-    }
-  }
-}
-
-async function buildInMemoryModel() {
-  const dir = path.join(process.cwd(), '.run', 'model.pass');
-  await fsp.rm(dir, { recursive: true, force: true });
-  await fsp.mkdir(dir, { recursive: true });
-
-  const passJson = {
-    formatVersion: 1,
-    passTypeIdentifier: 'REPLACED_AT_RUNTIME',
-    serialNumber: 'REPLACED_AT_RUNTIME',
-    teamIdentifier: 'REPLACED_AT_RUNTIME',
-    organizationName: 'REPLACED_AT_RUNTIME',
-    description: 'REPLACED_AT_RUNTIME',
-    generic: { primaryFields: [], secondaryFields: [] }
-  };
-  await fsp.writeFile(path.join(dir, 'pass.json'), JSON.stringify(passJson, null, 2));
-
-  const oneX = getImageBuffer('icon');
-  const twoX = getImageBuffer('icon@2x');
-  
-  await fsp.writeFile(path.join(dir, 'icon.png'), oneX);
-  await fsp.writeFile(path.join(dir, 'icon@2x.png'), twoX);
-  await fsp.writeFile(path.join(dir, 'logo.png'), oneX);
-  await fsp.writeFile(path.join(dir, 'logo@2x.png'), twoX);
-  
-  // Adding default transparent strip files so the compiler doesn't crash if they are missing
-  await fsp.writeFile(path.join(dir, 'strip.png'), oneX);
-  await fsp.writeFile(path.join(dir, 'strip@2x.png'), twoX);
-
-  return dir;
+  if (fs.existsSync(staticDir)) return staticDir;
+  throw new Error('pass-model.pass directory not found. Run: node scripts/generate-pass-assets.mjs');
 }
