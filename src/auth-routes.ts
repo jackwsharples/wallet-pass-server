@@ -1,28 +1,8 @@
 import { Express, Request, Response, NextFunction } from 'express';
-import { OAuth2Client } from 'google-auth-library';
 import jwt, { SignOptions } from 'jsonwebtoken';
 import { getPrisma } from './lib/prisma.js';
 
 const prisma = getPrisma();
-
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-
-interface GoogleToken {
-  iss: string;
-  azp: string;
-  aud: string;
-  sub: string;
-  email: string;
-  email_verified: boolean;
-  at_hash: string;
-  name: string;
-  picture: string;
-  given_name: string;
-  family_name: string;
-  locale: string;
-  iat: number;
-  exp: number;
-}
 
 interface AuthenticatedRequest extends Request {
   user?: { id: string; email: string };
@@ -44,24 +24,39 @@ export function registerAuthRoutes(app: Express) {
         return res.status(500).json({ error: 'Google OAuth not configured' });
       }
 
-      let ticket;
+      // The frontend uses the implicit OAuth flow (custom-styled button), which
+      // yields an ACCESS token, not an ID token. Validate it with Google's
+      // tokeninfo endpoint (and confirm it was issued for this app), then fetch
+      // the user's profile.
+      let profile: { sub?: string; email?: string; email_verified?: boolean; name?: string; picture?: string };
       try {
-        ticket = await googleClient.verifyIdToken({
-          idToken: token,
-          audience: process.env.GOOGLE_CLIENT_ID,
+        const infoRes = await fetch(
+          `https://oauth2.googleapis.com/tokeninfo?access_token=${encodeURIComponent(token)}`
+        );
+        if (!infoRes.ok) throw new Error('Token rejected by Google');
+        const info = (await infoRes.json()) as { aud?: string };
+        if (info.aud !== process.env.GOOGLE_CLIENT_ID) {
+          throw new Error('Token was not issued for this app');
+        }
+
+        const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${token}` },
         });
+        if (!userRes.ok) throw new Error('Failed to fetch Google profile');
+        profile = await userRes.json();
       } catch (error: any) {
         console.error('Google token verification failed:', error.message);
         return res.status(401).json({ error: 'Invalid Google token' });
       }
 
-      const payload = ticket.getPayload() as GoogleToken | undefined;
-
-      if (!payload || !payload.email || !payload.sub) {
+      if (!profile.email || !profile.sub) {
         return res.status(401).json({ error: 'Invalid token payload' });
       }
+      if (profile.email_verified === false) {
+        return res.status(401).json({ error: 'Google account email is not verified' });
+      }
 
-      const { sub: googleId, email, name, picture } = payload;
+      const { sub: googleId, email, name, picture } = profile;
 
       let user = await prisma.user.findUnique({
         where: { googleId },
