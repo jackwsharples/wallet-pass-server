@@ -262,11 +262,16 @@ app.post('/api/redeem', redeemLimiter, async (req: Request, res: Response, next:
 });
 
 // Download pass using short-lived token
-app.get('/api/pass/download', async (req, res) => {
+app.get('/api/pass/download', async (req, res, next) => {
+  // Token problems are the caller's fault (401); anything after is a server problem
+  let payload: ReturnType<typeof verifyDownloadToken>;
   try {
-    const token = (req.query.token as string) || '';
-    const payload = verifyDownloadToken(token);
+    payload = verifyDownloadToken((req.query.token as string) || '');
+  } catch {
+    return res.status(401).json({ error: 'Invalid or expired token' });
+  }
 
+  try {
     const row = await prisma.confirmationCode.findUnique({ where: { id: payload.codeId } });
     if (!row) return res.status(404).json({ error: 'Code not found' });
     if (row.status !== 'USED') return res.status(400).json({ error: 'Code not redeemed' });
@@ -282,13 +287,7 @@ app.get('/api/pass/download', async (req, res) => {
       'Buyer';
     const serial = row.code;
 
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
-    res.setHeader('Content-Type', 'application/vnd.apple.pkpass');
-    res.setHeader('Content-Disposition', 'attachment; filename="discount_card.pkpass"');
-
-    // Generate on the fly using existing pass generator
+    // Generate the pass before touching response headers so a failure can still return JSON
     const { ensureCertFilesOnDisk, createPassBuffer } = await getPassLib();
     const certPaths = await ensureCertFilesOnDisk();
     const orgName = process.env.ORG_NAME || 'Web Pass Org';
@@ -304,9 +303,15 @@ app.get('/api/pass/download', async (req, res) => {
       teamIdentifier,
       certPaths
     });
+
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Content-Type', 'application/vnd.apple.pkpass');
+    res.setHeader('Content-Disposition', 'attachment; filename="discount_card.pkpass"');
     res.end(buffer);
-  } catch (err: any) {
-    return res.status(400).json({ error: 'Invalid or expired token' });
+  } catch (err) {
+    next(err);
   }
 });
 
@@ -342,6 +347,11 @@ app.get('/api/pass', async (req, res) => {
   }
 });
 
+// Unknown API routes get a JSON 404 instead of falling through to the SPA page
+app.all('/api/*', (_req, res) => {
+  res.status(404).json({ error: 'Not found' });
+});
+
 // Fallback: SPA index
 app.get('*', (req, res) => {
   const indexPath = path.join(publicDir, 'index.html');
@@ -353,9 +363,39 @@ app.get('*', (req, res) => {
 });
 
 // Error handler
-app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-  console.error(err);
+app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
+  console.error(`[error] ${req.method} ${req.path}:`, err);
+  if (res.headersSent) return;
+
+  // Malformed JSON body (thrown by express.json)
+  if (err?.type === 'entity.parse.failed' || (err instanceof SyntaxError && 'body' in err)) {
+    return res.status(400).json({ error: 'Invalid JSON in request body' });
+  }
+
+  // Stripe errors: 4xx messages are safe to surface (bad price, amount too small, etc.);
+  // 5xx from Stripe stays generic
+  if (typeof err?.type === 'string' && err.type.startsWith('Stripe')) {
+    const status = Number(err.statusCode) || 500;
+    if (status < 500) {
+      return res.status(status).json({ error: err.message, code: err.code });
+    }
+    return res.status(502).json({ error: 'Payment provider error' });
+  }
+
+  // Common Prisma errors
+  if (err?.code === 'P2025') return res.status(404).json({ error: 'Record not found' });
+  if (err?.code === 'P2002') return res.status(409).json({ error: 'Duplicate record' });
+
   res.status(500).json({ error: 'Server error' });
+});
+
+// Last-resort logging so Railway logs always show a cause instead of a silent crash
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandledRejection]', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[uncaughtException]', err);
+  process.exit(1);
 });
 
 const port = Number(process.env.PORT || 3000);

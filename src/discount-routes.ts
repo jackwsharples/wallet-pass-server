@@ -1,6 +1,7 @@
 import express from 'express';
 import { randomBytes } from 'node:crypto';
 import { getPrisma } from './lib/prisma.js';
+import { asyncHandler } from './lib/async-handler.js';
 import { ensureCertFilesOnDisk, createPassBuffer } from './pass.js';
 
 type CodeRow = {
@@ -33,8 +34,21 @@ function generateCode(length = 12) {
 export function registerDiscountRoutes(app: express.Express) {
   // Lightweight CORS just for these endpoints
   app.use((req, res, next) => {
-    const allowedOrigin = process.env.FRONTEND_ORIGIN || '*';
+    // FRONTEND_ORIGIN may be a comma-separated list; Vercel preview URLs are always allowed
+    const configured = (process.env.FRONTEND_ORIGIN || '')
+      .split(',')
+      .map((s) => s.trim().replace(/\/$/, ''))
+      .filter(Boolean);
+    const origin = req.headers.origin;
+    const isVercelPreview =
+      typeof origin === 'string' &&
+      /^https:\/\/wallet-pass-server-[a-z0-9]+-jackwsharples-projects\.vercel\.app$/.test(origin);
+    const allowedOrigin =
+      origin && (configured.includes(origin) || isVercelPreview || configured.length === 0)
+        ? origin
+        : configured[0] || '*';
     res.header('Access-Control-Allow-Origin', allowedOrigin);
+    res.header('Vary', 'Origin');
     res.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization');
     res.header('Access-Control-Max-Age', '3600');
@@ -42,7 +56,7 @@ export function registerDiscountRoutes(app: express.Express) {
     return next();
   });
 
-  app.post('/api/store-code', async (req, res) => {
+  app.post('/api/store-code', asyncHandler(async (req, res) => {
     const { stripeSessionId, email } = req.body || {};
     if (!stripeSessionId || typeof stripeSessionId !== 'string' || stripeSessionId.trim().length < 6) {
       return res.status(400).json({ error: 'Missing stripeSessionId' });
@@ -90,9 +104,9 @@ export function registerDiscountRoutes(app: express.Express) {
       console.error('store-code error', err);
       return res.status(500).json({ error: 'Failed to store code' });
     }
-  });
+  }));
 
-  app.post('/api/redeem-code', async (req, res) => {
+  app.post('/api/redeem-code', asyncHandler(async (req, res) => {
     const { code, firstName, lastName } = req.body || {};
     if (!code || typeof code !== 'string') {
       return res.status(400).json({ error: 'Missing code' });
@@ -103,17 +117,8 @@ export function registerDiscountRoutes(app: express.Express) {
     if (!row) return res.status(404).json({ error: 'Invalid code' });
     if (row.status !== 'UNUSED') return res.status(400).json({ error: 'Code already used' });
 
-    await prisma.discountCode.update({
-      where: { code: normalized },
-      data: { status: 'USED', usedAt: new Date() }
-    });
-
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
-    res.setHeader('Content-Type', 'application/vnd.apple.pkpass');
-    res.setHeader('Content-Disposition', 'attachment; filename=\"discount_card.pkpass\"');
-
+    // Build the pass BEFORE marking the code used, so a generation failure
+    // doesn't burn the customer's code
     const certPaths = await ensureCertFilesOnDisk();
     const orgName = process.env.ORG_NAME || 'Web Pass Org';
     const description = process.env.PASS_DESCRIPTION || 'Web-generated pass';
@@ -136,6 +141,22 @@ export function registerDiscountRoutes(app: express.Express) {
       teamIdentifier,
       certPaths
     });
+
+    // Atomic flip: only succeeds if the code is still UNUSED, so two
+    // simultaneous redeems can't both get a pass
+    const updated = await prisma.discountCode.updateMany({
+      where: { code: normalized, status: 'UNUSED' },
+      data: { status: 'USED', usedAt: new Date() }
+    });
+    if (updated.count === 0) {
+      return res.status(400).json({ error: 'Code already used' });
+    }
+
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Content-Type', 'application/vnd.apple.pkpass');
+    res.setHeader('Content-Disposition', 'attachment; filename="discount_card.pkpass"');
     return res.end(buffer);
-  });
+  }));
 }
