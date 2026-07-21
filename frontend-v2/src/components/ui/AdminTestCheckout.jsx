@@ -33,9 +33,9 @@ export default function AdminTestCheckout({ region, onSuccess }) {
         },
         body: JSON.stringify({
           regionId: region.id,
+          regionName: region.name,
           metadata: {
-            region: region.name,
-            testMode: true,
+            format: 'digital',
           },
         }),
       })

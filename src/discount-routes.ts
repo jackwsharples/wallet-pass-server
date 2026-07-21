@@ -23,7 +23,7 @@ function normalizeCode(code: string) {
   return code.trim().toUpperCase();
 }
 
-function generateCode(length = 12) {
+export function generateCode(length = 12) {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   const bytes = randomBytes(length);
   let out = '';

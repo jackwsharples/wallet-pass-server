@@ -81,7 +81,7 @@ export async function createPassBuffer({
   const keyPassphrase = process.env.PASS_KEY_PASSPHRASE || undefined;
 
   const safeName = typeof holderName === 'string' && holderName.trim() ? holderName.trim() : 'Valued Member';
-  const qrUrl = (barcode && barcode.message) || process.env.PASS_QR_URL || 'https://wallet-pass-server.vercel.app';
+  const qrUrl = (barcode && barcode.message) || process.env.PASS_QR_URL || 'https://www.localdiscountcard.net';
 
   // Serial gets a timestamp suffix so re-downloads register as a fresh pass
   const baseSerial = serialNumber || 'TEST-000000';
@@ -136,7 +136,7 @@ export async function createPassBuffer({
     label: 'About',
     value: 'Show this card at participating local businesses to receive your member discount.'
   });
-  pass.backFields.push({ key: 'website', label: 'Website', value: 'https://wallet-pass-server.vercel.app' });
+  pass.backFields.push({ key: 'website', label: 'Website', value: 'https://www.localdiscountcard.net' });
 
   // Wallet dims/expires the pass natively after the membership year
   if (validUntil) {

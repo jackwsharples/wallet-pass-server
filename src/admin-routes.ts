@@ -1,6 +1,6 @@
 import { Express, Request, Response, NextFunction } from 'express'
 import { getPrisma } from './lib/prisma.js'
-import { makeCode } from './lib/code.js'
+import { generateCode } from './discount-routes.js'
 
 const prisma = getPrisma()
 
@@ -28,30 +28,35 @@ export function registerAdminRoutes(app: Express) {
         return res.status(403).json({ error: 'Admin access required' })
       }
 
-      const { metadata, email: customerEmail, regionId } = req.body || {}
+      const { metadata, email: customerEmail, regionId, regionName } = req.body || {}
 
       if (!regionId || typeof regionId !== 'string') {
         return res.status(400).json({ error: 'Missing regionId' })
       }
 
+      // Write to DiscountCode — the table /api/redeem-code reads — so test codes
+      // behave exactly like paid ones, region metadata included
       let code = ''
       for (let i = 0; i < 5; i++) {
-        code = makeCode(6)
+        const candidate = generateCode(12)
         try {
-          await prisma.confirmationCode.create({
+          await prisma.discountCode.create({
             data: {
-              code,
-              status: 'UNUSED',
-              customerEmail: customerEmail || user.email || null,
+              code: candidate,
               stripeSessionId: `admin-test:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
+              email: (customerEmail || user.email || '').toLowerCase() || null,
+              status: 'UNUSED',
               metadata: {
                 ...metadata,
+                region: regionId,
+                ...(typeof regionName === 'string' && regionName ? { regionName } : {}),
                 adminBypass: true,
                 adminId: user.id,
                 testMode: true,
               },
             },
           })
+          code = candidate
           break
         } catch (e: any) {
           if (e?.code !== 'P2002') throw e
